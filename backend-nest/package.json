@@ -2,7 +2,7 @@
   "name": "merge-request-backend-nest",
   "version": "1.0.0",
   "description": "代码合并管理系统后端 - NestJS",
-  "author": "",
+  "author": "karl",
   "private": true,
   "license": "MIT",
   "scripts": {
