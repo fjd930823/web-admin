@@ -273,6 +273,7 @@ const MergeRequestList: React.FC = () => {
         onOpenChange={setEditModalVisible}
         onFinish={handleEdit}
         width={500}
+        key={currentRecord?.id || 'new'}
         initialValues={currentRecord || {}}
       >
         <ProFormText
