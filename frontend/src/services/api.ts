@@ -263,3 +263,73 @@ export async function deleteTask(id: number) {
     method: 'DELETE',
   });
 }
+
+// 发帖相关接口
+export interface Post {
+  id?: number;
+  username: string;
+  password: string;
+  title: string;
+  content: string;
+  status?: 'success' | 'failed';
+  error_message?: string;
+  created_at?: string;
+}
+
+export interface PostFormData {
+  accounts: Array<{
+    username: string;
+    password: string;
+  }>;
+  title: string;
+  content: string;
+}
+
+export async function submitPost(data: { username: string; password: string; title: string; content: string }) {
+  return request<{
+    success: boolean;
+    data?: any;
+    message?: string;
+  }>('/api/posts', {
+    method: 'POST',
+    data,
+  });
+}
+
+export async function getPostHistory(params?: {
+  page?: number;
+  pageSize?: number;
+  status?: string;
+  username?: string;
+  title?: string;
+  sortField?: string;
+  sortOrder?: string;
+}) {
+  return request<{
+    success: boolean;
+    data: Post[];
+    total: number;
+  }>('/api/posts', {
+    method: 'GET',
+    params,
+  });
+}
+
+export async function deletePost(id: number) {
+  return request<{
+    success: boolean;
+  }>(`/api/posts/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+// 搜索相关接口（根据实际需求调整）
+export async function searchContent(params: { keyword: string; type?: string }) {
+  return request<{
+    success: boolean;
+    data: any[];
+  }>('/api/search', {
+    method: 'GET',
+    params,
+  });
+}

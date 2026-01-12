@@ -74,6 +74,27 @@ export default defineConfig({
       component: './MergeRequest/List',
     },
     {
+      path: '/posts',
+      name: '发帖管理',
+      icon: 'form',
+      routes: [
+        {
+          path: '/posts',
+          redirect: '/posts/create',
+        },
+        {
+          name: '发帖',
+          path: '/posts/create',
+          component: './Post/Create',
+        },
+        {
+          name: '发帖记录',
+          path: '/posts/history',
+          component: './Post/History',
+        },
+      ],
+    },
+    {
       path: '/',
       redirect: '/welcome',
     },

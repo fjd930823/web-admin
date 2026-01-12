@@ -1,22 +1,35 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, Inject } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { InjectModel } from '@nestjs/sequelize';
+import { Knex } from 'knex';
 import * as bcrypt from 'bcryptjs';
-import { User } from '../users/entities/user.entity';
+import { KNEX_CONNECTION } from '../database/knex.module';
 import { LoginDto, RegisterDto } from './dto/login.dto';
+
+export interface User {
+  id: number;
+  username: string;
+  email: string;
+  password: string;
+  role: 'admin' | 'user';
+  created_at: Date;
+  updated_at: Date;
+}
 
 @Injectable()
 export class AuthService {
   constructor(
-    @InjectModel(User)
-    private userModel: typeof User,
+    @Inject(KNEX_CONNECTION)
+    private readonly knex: Knex,
     private jwtService: JwtService,
   ) {}
 
   async login(loginDto: LoginDto) {
     const { username, password } = loginDto;
     
-    const user = await this.userModel.findOne({ where: { username } });
+    const user = await this.knex<User>('users')
+      .where({ username })
+      .first();
+
     if (!user) {
       throw new UnauthorizedException('用户不存在');
     }
@@ -43,36 +56,48 @@ export class AuthService {
   async register(registerDto: RegisterDto) {
     const { username, email, password } = registerDto;
 
-    const existingUser = await this.userModel.findOne({ where: { username } });
+    // 检查用户名是否存在
+    const existingUser = await this.knex<User>('users')
+      .where({ username })
+      .first();
     if (existingUser) {
       throw new Error('用户名已存在');
     }
 
-    const existingEmail = await this.userModel.findOne({ where: { email } });
+    // 检查邮箱是否存在
+    const existingEmail = await this.knex<User>('users')
+      .where({ email })
+      .first();
     if (existingEmail) {
       throw new Error('邮箱已被注册');
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = await this.userModel.create({
+    const [id] = await this.knex<User>('users').insert({
       username,
       email,
       password: hashedPassword,
+      role: 'user',
+      created_at: new Date(),
+      updated_at: new Date(),
     });
 
+    const user = await this.knex<User>('users').where({ id }).first();
+
     return {
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      role: user.role,
+      id: user!.id,
+      username: user!.username,
+      email: user!.email,
+      role: user!.role,
     };
   }
 
   async getCurrentUser(userId: number) {
-    const user = await this.userModel.findByPk(userId, {
-      attributes: ['id', 'username', 'email', 'role'],
-    });
-    return user;
+    const user = await this.knex<User>('users')
+      .where({ id: userId })
+      .select('id', 'username', 'email', 'role')
+      .first();
+    return user || null;
   }
 }

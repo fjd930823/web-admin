@@ -1,66 +1,163 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/sequelize';
-import { MergeRequest } from './entities/merge-request.entity';
-import { User } from '../users/entities/user.entity';
+import { Injectable, NotFoundException, ForbiddenException, Inject } from '@nestjs/common';
+import { Knex } from 'knex';
+import { KNEX_CONNECTION } from '../database/knex.module';
 import { CreateMergeRequestDto, UpdateMergeRequestDto } from './dto/create-merge-request.dto';
 import { parsePagination, formatPaginationResponse } from '../common/utils/pagination.util';
+
+export interface MergeRequest {
+  id: number;
+  title: string;
+  description?: string;
+  source_branch: string;
+  target_branch: string;
+  repository_url?: string;
+  merge_url: string;
+  status: string;
+  creator_id: number;
+  assignee_id?: number;
+  merged_by?: number;
+  merged_at?: Date;
+  created_at: Date;
+  updated_at: Date;
+}
 
 @Injectable()
 export class MergeRequestsService {
   constructor(
-    @InjectModel(MergeRequest)
-    private mergeRequestModel: typeof MergeRequest,
+    @Inject(KNEX_CONNECTION)
+    private readonly knex: Knex,
   ) {}
 
   async findAll(query: any) {
     const { status } = query;
     const { limit, offset } = parsePagination(query);
     
-    const where: any = {};
+    let queryBuilder = this.knex<MergeRequest>('merge_requests')
+      .leftJoin('users as creator', 'merge_requests.creator_id', 'creator.id')
+      .leftJoin('users as assignee', 'merge_requests.assignee_id', 'assignee.id')
+      .leftJoin('users as merger', 'merge_requests.merged_by', 'merger.id')
+      .select(
+        'merge_requests.*',
+        'creator.id as creator_id_ref',
+        'creator.username as creator_username',
+        'creator.email as creator_email',
+        'assignee.id as assignee_id_ref',
+        'assignee.username as assignee_username',
+        'assignee.email as assignee_email',
+        'merger.id as merger_id_ref',
+        'merger.username as merger_username',
+        'merger.email as merger_email'
+      );
+
     if (status) {
-      where.status = status;
+      queryBuilder = queryBuilder.where('merge_requests.status', status);
     }
 
-    const { count, rows } = await this.mergeRequestModel.findAndCountAll({
-      where,
-      include: [
-        { model: User, as: 'creator', attributes: ['id', 'username', 'email'] },
-        { model: User, as: 'assignee', attributes: ['id', 'username', 'email'] },
-        { model: User, as: 'merger', attributes: ['id', 'username', 'email'] },
-      ],
-      order: [['createdAt', 'DESC']],
-      limit,
-      offset,
-    });
+    // 获取总数
+    const countResult = await queryBuilder.clone().clearSelect().clearOrder().count('merge_requests.id as count').first();
+    const count = Number(countResult?.count || 0);
 
-    const list = rows.map(item => ({
-      ...item.toJSON(),
-      creator_name: item.creator?.username,
-      assignee_name: item.assignee?.username,
-      merger_name: item.merger?.username,
+    // 获取数据
+    const rows = await queryBuilder
+      .orderBy('merge_requests.created_at', 'desc')
+      .limit(limit)
+      .offset(offset);
+
+    const list = rows.map((row: any) => ({
+      id: row.id,
+      title: row.title,
+      description: row.description,
+      source_branch: row.source_branch,
+      target_branch: row.target_branch,
+      repository_url: row.repository_url,
+      merge_url: row.merge_url,
+      status: row.status,
+      creator_id: row.creator_id,
+      assignee_id: row.assignee_id,
+      merged_by: row.merged_by,
+      merged_at: row.merged_at,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      creator: row.creator_id_ref ? {
+        id: row.creator_id_ref,
+        username: row.creator_username,
+        email: row.creator_email,
+      } : null,
+      assignee: row.assignee_id_ref ? {
+        id: row.assignee_id_ref,
+        username: row.assignee_username,
+        email: row.assignee_email,
+      } : null,
+      merger: row.merger_id_ref ? {
+        id: row.merger_id_ref,
+        username: row.merger_username,
+        email: row.merger_email,
+      } : null,
+      creator_name: row.creator_username,
+      assignee_name: row.assignee_username,
+      merger_name: row.merger_username,
     }));
 
     return formatPaginationResponse(list, count);
   }
 
   async findOne(id: number) {
-    const mergeRequest = await this.mergeRequestModel.findByPk(id, {
-      include: [
-        { model: User, as: 'creator', attributes: ['id', 'username', 'email'] },
-        { model: User, as: 'assignee', attributes: ['id', 'username', 'email'] },
-        { model: User, as: 'merger', attributes: ['id', 'username', 'email'] },
-      ],
-    });
+    const row: any = await this.knex<MergeRequest>('merge_requests')
+      .leftJoin('users as creator', 'merge_requests.creator_id', 'creator.id')
+      .leftJoin('users as assignee', 'merge_requests.assignee_id', 'assignee.id')
+      .leftJoin('users as merger', 'merge_requests.merged_by', 'merger.id')
+      .where('merge_requests.id', id)
+      .select(
+        'merge_requests.*',
+        'creator.id as creator_id_ref',
+        'creator.username as creator_username',
+        'creator.email as creator_email',
+        'assignee.id as assignee_id_ref',
+        'assignee.username as assignee_username',
+        'assignee.email as assignee_email',
+        'merger.id as merger_id_ref',
+        'merger.username as merger_username',
+        'merger.email as merger_email'
+      )
+      .first();
 
-    if (!mergeRequest) {
+    if (!row) {
       throw new NotFoundException('合并请求不存在');
     }
 
     return {
-      ...mergeRequest.toJSON(),
-      creator_name: mergeRequest.creator?.username,
-      assignee_name: mergeRequest.assignee?.username,
-      merger_name: mergeRequest.merger?.username,
+      id: row.id,
+      title: row.title,
+      description: row.description,
+      source_branch: row.source_branch,
+      target_branch: row.target_branch,
+      repository_url: row.repository_url,
+      merge_url: row.merge_url,
+      status: row.status,
+      creator_id: row.creator_id,
+      assignee_id: row.assignee_id,
+      merged_by: row.merged_by,
+      merged_at: row.merged_at,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      creator: row.creator_id_ref ? {
+        id: row.creator_id_ref,
+        username: row.creator_username,
+        email: row.creator_email,
+      } : null,
+      assignee: row.assignee_id_ref ? {
+        id: row.assignee_id_ref,
+        username: row.assignee_username,
+        email: row.assignee_email,
+      } : null,
+      merger: row.merger_id_ref ? {
+        id: row.merger_id_ref,
+        username: row.merger_username,
+        email: row.merger_email,
+      } : null,
+      creator_name: row.creator_username,
+      assignee_name: row.assignee_username,
+      merger_name: row.merger_username,
     };
   }
 
@@ -71,18 +168,20 @@ export class MergeRequestsService {
       title: createDto.merge_url,
       source_branch: '-',
       target_branch: '-',
+      created_at: new Date(),
+      updated_at: new Date(),
     };
 
     if (!data.repository_url) {
       data.repository_url = null;
     }
 
-    const mergeRequest = await this.mergeRequestModel.create(data);
-    return this.findOne(mergeRequest.id);
+    const [id] = await this.knex<MergeRequest>('merge_requests').insert(data);
+    return this.findOne(id);
   }
 
   async update(id: number, updateDto: UpdateMergeRequestDto, user: any) {
-    const mergeRequest = await this.mergeRequestModel.findByPk(id);
+    const mergeRequest = await this.knex<MergeRequest>('merge_requests').where({ id }).first();
     if (!mergeRequest) {
       throw new NotFoundException('合并请求不存在');
     }
@@ -91,7 +190,10 @@ export class MergeRequestsService {
       throw new ForbiddenException('没有权限修改此合并请求');
     }
 
-    const updateData: any = { ...updateDto };
+    const updateData: any = { 
+      ...updateDto,
+      updated_at: new Date(),
+    };
 
     // 如果状态改为已合并，记录合并人和合并时间
     if (updateDto.status === 'merged' && mergeRequest.status !== 'merged') {
@@ -99,12 +201,15 @@ export class MergeRequestsService {
       updateData.merged_at = new Date();
     }
 
-    await mergeRequest.update(updateData);
+    await this.knex<MergeRequest>('merge_requests')
+      .where({ id })
+      .update(updateData);
+
     return this.findOne(id);
   }
 
   async remove(id: number, user: any) {
-    const mergeRequest = await this.mergeRequestModel.findByPk(id);
+    const mergeRequest = await this.knex<MergeRequest>('merge_requests').where({ id }).first();
     if (!mergeRequest) {
       throw new NotFoundException('合并请求不存在');
     }
@@ -113,6 +218,6 @@ export class MergeRequestsService {
       throw new ForbiddenException('没有权限删除此合并请求');
     }
 
-    await mergeRequest.destroy();
+    await this.knex<MergeRequest>('merge_requests').where({ id }).del();
   }
 }

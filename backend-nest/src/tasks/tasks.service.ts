@@ -1,89 +1,170 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/sequelize';
-import { Op } from 'sequelize';
-import { Task } from './entities/task.entity';
-import { User } from '../users/entities/user.entity';
+import { Injectable, NotFoundException, ForbiddenException, Inject } from '@nestjs/common';
+import { Knex } from 'knex';
+import { KNEX_CONNECTION } from '../database/knex.module';
 import { CreateTaskDto, UpdateTaskDto, UpdateTaskStatusDto } from './dto/create-task.dto';
 import { parsePagination, formatPaginationResponse } from '../common/utils/pagination.util';
+
+export interface Task {
+  id: number;
+  title: string;
+  description?: string;
+  status: string;
+  priority: string;
+  assignee_id?: number;
+  creator_id: number;
+  start_date?: Date;
+  due_date?: Date;
+  sort_order: number;
+  created_at: Date;
+  updated_at: Date;
+}
 
 @Injectable()
 export class TasksService {
   constructor(
-    @InjectModel(Task)
-    private taskModel: typeof Task,
+    @Inject(KNEX_CONNECTION)
+    private readonly knex: Knex,
   ) {}
 
   async findAll(query: any) {
     const { status, assignee_id, year, month } = query;
     const { limit, offset } = parsePagination(query, 1000);
     
-    const where: any = {};
+    let queryBuilder = this.knex<Task>('tasks')
+      .leftJoin('users as creator', 'tasks.creator_id', 'creator.id')
+      .leftJoin('users as assignee', 'tasks.assignee_id', 'assignee.id')
+      .select(
+        'tasks.*',
+        'creator.id as creator_id_ref',
+        'creator.username as creator_username',
+        'creator.email as creator_email',
+        'assignee.id as assignee_id_ref',
+        'assignee.username as assignee_username',
+        'assignee.email as assignee_email'
+      );
+
     if (status) {
-      where.status = status;
+      queryBuilder = queryBuilder.where('tasks.status', status);
     }
     if (assignee_id !== undefined) {
-      where.assignee_id = assignee_id === 0 ? null : assignee_id;
+      if (assignee_id === 0 || assignee_id === '0') {
+        queryBuilder = queryBuilder.whereNull('tasks.assignee_id');
+      } else {
+        queryBuilder = queryBuilder.where('tasks.assignee_id', assignee_id);
+      }
     }
     if (year && month) {
       const startOfMonth = new Date(year, month - 1, 1);
       const endOfMonth = new Date(year, month, 0, 23, 59, 59);
-      where.start_date = { [Op.between]: [startOfMonth, endOfMonth] };
+      queryBuilder = queryBuilder.whereBetween('tasks.start_date', [startOfMonth, endOfMonth]);
     } else if (year) {
       const startOfYear = new Date(year, 0, 1);
       const endOfYear = new Date(year, 11, 31, 23, 59, 59);
-      where.start_date = { [Op.between]: [startOfYear, endOfYear] };
+      queryBuilder = queryBuilder.whereBetween('tasks.start_date', [startOfYear, endOfYear]);
     }
 
-    const { count, rows } = await this.taskModel.findAndCountAll({
-      where,
-      include: [
-        { model: User, as: 'creator', attributes: ['id', 'username', 'email'] },
-        { model: User, as: 'assignee', attributes: ['id', 'username', 'email'] },
-      ],
-      order: [['sort_order', 'ASC'], ['createdAt', 'DESC']],
-      limit,
-      offset,
-    });
+    // 获取总数
+    const countResult = await queryBuilder.clone().clearSelect().clearOrder().count('tasks.id as count').first();
+    const count = Number(countResult?.count || 0);
 
-    const list = rows.map(item => ({
-      ...item.toJSON(),
-      creator_name: item.creator?.username,
-      assignee_name: item.assignee?.username,
+    // 获取数据
+    const rows = await queryBuilder
+      .orderBy('tasks.sort_order', 'asc')
+      .orderBy('tasks.created_at', 'desc')
+      .limit(limit)
+      .offset(offset);
+
+    const list = rows.map((row: any) => ({
+      id: row.id,
+      title: row.title,
+      description: row.description,
+      status: row.status,
+      priority: row.priority,
+      assignee_id: row.assignee_id,
+      creator_id: row.creator_id,
+      start_date: row.start_date,
+      due_date: row.due_date,
+      sort_order: row.sort_order,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      creator: row.creator_id_ref ? {
+        id: row.creator_id_ref,
+        username: row.creator_username,
+        email: row.creator_email,
+      } : null,
+      assignee: row.assignee_id_ref ? {
+        id: row.assignee_id_ref,
+        username: row.assignee_username,
+        email: row.assignee_email,
+      } : null,
+      creator_name: row.creator_username,
+      assignee_name: row.assignee_username,
     }));
 
     return { list, total: count };
   }
 
   async findOne(id: number) {
-    const task = await this.taskModel.findByPk(id, {
-      include: [
-        { model: User, as: 'creator', attributes: ['id', 'username', 'email'] },
-        { model: User, as: 'assignee', attributes: ['id', 'username', 'email'] },
-      ],
-    });
+    const row: any = await this.knex<Task>('tasks')
+      .leftJoin('users as creator', 'tasks.creator_id', 'creator.id')
+      .leftJoin('users as assignee', 'tasks.assignee_id', 'assignee.id')
+      .where('tasks.id', id)
+      .select(
+        'tasks.*',
+        'creator.id as creator_id_ref',
+        'creator.username as creator_username',
+        'creator.email as creator_email',
+        'assignee.id as assignee_id_ref',
+        'assignee.username as assignee_username',
+        'assignee.email as assignee_email'
+      )
+      .first();
 
-    if (!task) {
+    if (!row) {
       throw new NotFoundException('任务不存在');
     }
 
     return {
-      ...task.toJSON(),
-      creator_name: task.creator?.username,
-      assignee_name: task.assignee?.username,
+      id: row.id,
+      title: row.title,
+      description: row.description,
+      status: row.status,
+      priority: row.priority,
+      assignee_id: row.assignee_id,
+      creator_id: row.creator_id,
+      start_date: row.start_date,
+      due_date: row.due_date,
+      sort_order: row.sort_order,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      creator: row.creator_id_ref ? {
+        id: row.creator_id_ref,
+        username: row.creator_username,
+        email: row.creator_email,
+      } : null,
+      assignee: row.assignee_id_ref ? {
+        id: row.assignee_id_ref,
+        username: row.assignee_username,
+        email: row.assignee_email,
+      } : null,
+      creator_name: row.creator_username,
+      assignee_name: row.assignee_username,
     };
   }
 
   async create(createTaskDto: CreateTaskDto, creatorId: number) {
-    const task = await this.taskModel.create({
+    const [id] = await this.knex('tasks').insert({
       ...createTaskDto,
       creator_id: creatorId,
+      created_at: new Date(),
+      updated_at: new Date(),
     });
 
-    return this.findOne(task.id);
+    return this.findOne(Number(id));
   }
 
   async update(id: number, updateTaskDto: UpdateTaskDto, user: any) {
-    const task = await this.taskModel.findByPk(id);
+    const task = await this.knex<Task>('tasks').where({ id }).first();
     if (!task) {
       throw new NotFoundException('任务不存在');
     }
@@ -92,22 +173,34 @@ export class TasksService {
       throw new ForbiddenException('没有权限修改此任务');
     }
 
-    await task.update(updateTaskDto);
+    await this.knex('tasks')
+      .where({ id })
+      .update({
+        ...updateTaskDto,
+        updated_at: new Date(),
+      });
+
     return this.findOne(id);
   }
 
   async updateStatus(id: number, updateStatusDto: UpdateTaskStatusDto) {
-    const task = await this.taskModel.findByPk(id);
+    const task = await this.knex<Task>('tasks').where({ id }).first();
     if (!task) {
       throw new NotFoundException('任务不存在');
     }
 
-    await task.update(updateStatusDto);
+    await this.knex<Task>('tasks')
+      .where({ id })
+      .update({
+        ...updateStatusDto,
+        updated_at: new Date(),
+      });
+
     return this.findOne(id);
   }
 
   async remove(id: number, user: any) {
-    const task = await this.taskModel.findByPk(id);
+    const task = await this.knex<Task>('tasks').where({ id }).first();
     if (!task) {
       throw new NotFoundException('任务不存在');
     }
@@ -116,6 +209,6 @@ export class TasksService {
       throw new ForbiddenException('没有权限删除此任务');
     }
 
-    await task.destroy();
+    await this.knex<Task>('tasks').where({ id }).del();
   }
 }

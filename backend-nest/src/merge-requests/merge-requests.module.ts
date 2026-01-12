@@ -1,12 +1,10 @@
 import { Module } from '@nestjs/common';
-import { SequelizeModule } from '@nestjs/sequelize';
 import { MergeRequestsService } from './merge-requests.service';
 import { MergeRequestsController } from './merge-requests.controller';
-import { MergeRequest } from './entities/merge-request.entity';
-import { User } from '../users/entities/user.entity';
+import { CommonModule } from '../common/common.module';
 
 @Module({
-  imports: [SequelizeModule.forFeature([MergeRequest, User])],
+  imports: [CommonModule],
   controllers: [MergeRequestsController],
   providers: [MergeRequestsService],
 })
