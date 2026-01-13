@@ -1,8 +1,10 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, Request } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, Request, UseGuards } from '@nestjs/common';
 import { MergeRequestsService } from './merge-requests.service';
 import { CreateMergeRequestDto, UpdateMergeRequestDto } from './dto/create-merge-request.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('merge-requests')
+@UseGuards(JwtAuthGuard)
 export class MergeRequestsController {
   constructor(private readonly mergeRequestsService: MergeRequestsService) {}
 

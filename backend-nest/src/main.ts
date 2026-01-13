@@ -3,6 +3,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { KNEX_CONNECTION } from './database/knex.module';
 import { initializeDatabase } from './database/database.providers';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -17,6 +18,9 @@ async function bootstrap() {
       whitelist: true,
     }),
   );
+
+  // 启用全局异常过滤器
+  app.useGlobalFilters(new HttpExceptionFilter());
 
   // 启用 CORS
   app.enableCors();

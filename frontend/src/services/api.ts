@@ -333,3 +333,10 @@ export async function searchContent(params: { keyword: string; type?: string }) 
     params,
   });
 }
+
+// 获取搜索详情
+export async function getSearchDetail(id: string) {
+  return request<any>(`/api/search/detail/${id}`, {
+    method: 'GET',
+  });
+}
