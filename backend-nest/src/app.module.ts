@@ -7,6 +7,7 @@ import { TasksModule } from './tasks/tasks.module';
 import { MergeRequestsModule } from './merge-requests/merge-requests.module';
 import { PostsModule } from './posts/posts.module';
 import { SearchModule } from './search/search.module';
+import { CloudCommunityModule } from './cloud-community/cloud-community.module';
 import { KnexModule } from './database/knex.module';
 
 @Module({
@@ -23,6 +24,7 @@ import { KnexModule } from './database/knex.module';
     MergeRequestsModule,
     PostsModule,
     SearchModule,
+    CloudCommunityModule,
   ],
 })
 export class AppModule {}

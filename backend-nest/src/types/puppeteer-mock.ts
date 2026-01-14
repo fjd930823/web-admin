@@ -1,0 +1,22 @@
+// Mock Puppeteer types to resolve compilation issues
+export interface Page {
+  goto(url: string, options?: any): Promise<any>;
+  waitForSelector(selector: string, options?: any): Promise<any>;
+  evaluate(pageFunction: any): Promise<any>;
+  setUserAgent(userAgent: string): Promise<void>;
+  close(): Promise<void>;
+}
+
+export interface Browser {
+  newPage(): Promise<Page>;
+  close(): Promise<void>;
+}
+
+export interface PuppeteerLaunchOptions {
+  headless?: boolean;
+  args?: string[];
+}
+
+export function launch(options?: PuppeteerLaunchOptions): Promise<Browser> {
+  throw new Error('Puppeteer not available in this context');
+}

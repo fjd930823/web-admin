@@ -1,31 +1,47 @@
-import { Global, Module } from '@nestjs/common';
-import { knex, Knex } from 'knex';
+import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import * as Knex from 'knex';
 import * as path from 'path';
 
 export const KNEX_CONNECTION = 'KNEX_CONNECTION';
 
-const knexProvider = {
-  provide: KNEX_CONNECTION,
-  useFactory: (): Knex => {
-    const knexInstance = knex({
-      client: 'sqlite3',
-      connection: {
-        filename: path.join(process.cwd(), 'database', 'database.sqlite'),
-      },
-      useNullAsDefault: true,
-      migrations: {
-        directory: path.join(process.cwd(), 'database', 'migrations'),
-        extension: 'ts',
-      },
-    });
+export interface KnexConfig {
+  client: string;
+  connection: any;
+  migrations?: {
+    directory: string;
+    extension?: string;
+  };
+  seeds?: {
+    directory: string;
+  };
+  useNullAsDefault?: boolean;
+}
 
-    return knexInstance;
-  },
-};
-
-@Global()
 @Module({
-  providers: [knexProvider],
+  imports: [ConfigModule],
+  providers: [
+    {
+      provide: KNEX_CONNECTION,
+      useFactory: (configService: ConfigService) => {
+        const knexConfig: KnexConfig = {
+          client: 'sqlite3',
+          connection: {
+            filename: path.join(process.cwd(), 'database', 'database.sqlite'),
+	          extension: 'ts',
+          },
+          useNullAsDefault: true,
+	        migrations: {
+		        directory: path.join(process.cwd(), 'database', 'migrations'),
+		        extension: 'ts',
+	        },
+        };
+        
+        return Knex.default(knexConfig);
+      },
+      inject: [ConfigService],
+    },
+  ],
   exports: [KNEX_CONNECTION],
 })
 export class KnexModule {}

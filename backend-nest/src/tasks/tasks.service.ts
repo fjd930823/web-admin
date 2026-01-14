@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException, ForbiddenException, Inject } from '@nestjs/common';
 import { Knex } from 'knex';
-import { KNEX_CONNECTION } from '../database/knex.module';
+import { KNEX_CONNECTION } from '@/database/knex.module';
 import { CreateTaskDto, UpdateTaskDto, UpdateTaskStatusDto } from './dto/create-task.dto';
-import { parsePagination, formatPaginationResponse } from '../common/utils/pagination.util';
+import { parsePagination, formatPaginationResponse } from '@/common/utils/pagination.util';
 
 export interface Task {
   id: number;
