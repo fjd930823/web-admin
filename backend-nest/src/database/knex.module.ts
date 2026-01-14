@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import * as Knex from 'knex';
+import * as path from 'path';
 
 export const KNEX_CONNECTION = 'KNEX_CONNECTION';
 
@@ -26,9 +27,14 @@ export interface KnexConfig {
         const knexConfig: KnexConfig = {
           client: 'sqlite3',
           connection: {
-            filename: './database/database.sqlite',
+            filename: path.join(process.cwd(), 'database', 'database.sqlite'),
+	          extension: 'ts',
           },
           useNullAsDefault: true,
+	        migrations: {
+		        directory: path.join(process.cwd(), 'database', 'migrations'),
+		        extension: 'ts',
+	        },
         };
         
         return Knex.default(knexConfig);

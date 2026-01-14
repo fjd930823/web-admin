@@ -1,18 +1,38 @@
-import { Knex } from 'knex';
+import type { Knex } from 'knex';
+import * as path from 'path';
 
-const config: Knex.Config = {
-  client: 'sqlite3',
-  connection: {
-    filename: './database/database.sqlite',
+const config: { [key: string]: Knex.Config } = {
+  development: {
+    client: 'sqlite3',
+    connection: {
+      filename: path.join(__dirname, 'database', 'database.sqlite'),
+    },
+    useNullAsDefault: true,
+    migrations: {
+      directory: path.join(__dirname, 'database', 'migrations'),
+      extension: 'ts',
+    },
+    seeds: {
+      directory: path.join(__dirname, 'database', 'seeds'),
+      extension: 'ts',
+    },
   },
-  migrations: {
-    directory: './database/migrations',
-    extension: 'ts',
+
+  production: {
+    client: 'sqlite3',
+    connection: {
+      filename: path.join(__dirname, 'database', 'database.sqlite'),
+    },
+    useNullAsDefault: true,
+    migrations: {
+      directory: path.join(__dirname, 'database', 'migrations'),
+      extension: 'ts',
+    },
+    pool: {
+      min: 2,
+      max: 10,
+    },
   },
-  seeds: {
-    directory: './database/seeds',
-  },
-  useNullAsDefault: true,
 };
 
 export default config;

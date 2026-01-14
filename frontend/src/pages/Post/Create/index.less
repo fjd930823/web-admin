@@ -1,0 +1,101 @@
+.post-create-page {
+  position: relative;
+  .ant-spin-nested-loading{
+    overflow: scroll;
+  }
+
+  .form-section {
+    margin-bottom: 24px;
+  }
+
+  // 搜索面板样式优化
+  .search-panel-card {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    
+    :global {
+      .ant-card-head {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        
+        .ant-card-head-title {
+          color: white;
+          font-weight: 500;
+        }
+      }
+    }
+  }
+
+  // 自定义滚动条样式
+  :global {
+    .search-results-container,
+    .detail-content-area {
+      // 始终显示滚动条
+      &::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+      }
+      
+      &::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 5px;
+        margin: 4px;
+      }
+      
+      &::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 5px;
+        border: 2px solid #f1f1f1;
+        
+        &:hover {
+          background: #a8a8a8;
+        }
+        
+        &:active {
+          background: #787878;
+        }
+      }
+      
+      // Firefox 滚动条样式
+      scrollbar-width: thin;
+      scrollbar-color: #c1c1c1 #f1f1f1;
+    }
+
+    // 搜索结果项 hover 效果
+    .search-result-item {
+      &:hover {
+        background: #f5f5f5;
+        transform: translateX(4px);
+      }
+    }
+    
+    // 标签选择区域滚动条
+    .tags-select-area {
+      &::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      
+      &::-webkit-scrollbar-track {
+        background: #fafafa;
+        border-radius: 4px;
+      }
+      
+      &::-webkit-scrollbar-thumb {
+        background: #d9d9d9;
+        border-radius: 4px;
+        
+        &:hover {
+          background: #bfbfbf;
+        }
+      }
+      
+      scrollbar-width: thin;
+      scrollbar-color: #d9d9d9 #fafafa;
+    }
+  }
+
+  .submit-section {
+    margin-top: 24px;
+    text-align: center;
+  }
+}

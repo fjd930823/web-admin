@@ -1,6 +1,25 @@
 # compiled output
 /dist
 /node_modules
+node_modules/
+
+# 子项目的 node_modules
+/backend-nest/node_modules
+/frontend/node_modules
+
+# UmiJS 自动生成的文件
+.umi
+.umi-production
+.umi-test
+**/.umi
+**/.umi-production
+**/.umi-test
+
+# 缓存文件
+.cache
+**/.cache
+.mfsu
+**/.mfsu
 
 # Logs
 logs
@@ -33,7 +52,3 @@ lerna-debug.log*
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
-
-# Database
-database/*.sqlite
-database/*.db
