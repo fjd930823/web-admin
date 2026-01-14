@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { CloudCommunityService, CreateCloudAccountDto, CreateCloudPostDto } from './cloud-community.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '@/auth/guards/jwt-auth.guard';
 
 @Controller('cloud-community')
 @UseGuards(JwtAuthGuard)

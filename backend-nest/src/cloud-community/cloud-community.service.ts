@@ -1,5 +1,5 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
-import { KNEX_CONNECTION } from '../database/knex.module';
+import { KNEX_CONNECTION } from '@/database/knex.module';
 import { Knex } from 'knex';
 import axios, { AxiosRequestConfig } from 'axios';
 import * as crypto from 'crypto';
@@ -383,7 +383,7 @@ export class CloudCommunityService {
    * 获取所有帖子记录
    */
   async getAllPosts(): Promise<CloudPost[]> {
-    return await this.knex<CloudPost>('cloud_posts')
+    return this.knex<CloudPost>('cloud_posts')
       .orderBy('published_at', 'desc');
   }
 
@@ -391,8 +391,8 @@ export class CloudCommunityService {
    * 根据账号获取帖子记录
    */
   async getPostsByAccount(accountId: number): Promise<CloudPost[]> {
-    return await this.knex<CloudPost>('cloud_posts')
-      .where({ account_id: accountId })
+    return this.knex<CloudPost>('cloud_posts')
+      .where({account_id: accountId})
       .orderBy('published_at', 'desc');
   }
 }

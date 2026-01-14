@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { CloudCommunityService } from './cloud-community.service';
 import { CaptchaService } from './captcha.service';
 import { CloudCommunityController } from './cloud-community.controller';
-import { CommonModule } from '../common/common.module';
+import { CommonModule } from '@/common/common.module';
 
 @Module({
   imports: [CommonModule],
