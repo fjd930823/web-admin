@@ -1,16 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { CloudAccount } from './cloud-community.service';
 // Puppeteer will be dynamically imported to handle installation issues
-
+// Puppeteer 模版，以备不时之需
 @Injectable()
 export class CaptchaService {
   private readonly logger = new Logger(CaptchaService.name);
-
-  /**
-   * 使用Puppeteer处理滑块验证
-   */
+  
   async solveCaptcha(account: CloudAccount): Promise<any> {
-    // 动态导入puppeteer以处理安装问题
     let puppeteer;
     try {
       puppeteer = await import('puppeteer');
@@ -35,25 +31,18 @@ export class CaptchaService {
     try {
       const page = await browser.newPage();
       
-      // 设置请求头
       await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36');
       
-      // 访问登录页面
       await page.goto('https://123panfx.com/?user-login.htm', {
         waitUntil: 'networkidle2',
       });
       
-      // 等待滑块验证元素出现
       await page.waitForSelector('#captcha-element', { timeout: 10000 }).catch(() => {
         this.logger.log('未检测到滑块验证元素，可能不需要验证');
         return;
       });
       
-      // 这里需要实现具体的滑块拖动逻辑
-      // 由于滑块验证的具体实现可能不同，这里仅提供框架
       const captchaData = await page.evaluate(() => {
-        // 在浏览器上下文中执行获取验证参数的逻辑
-        // 这将根据具体的验证提供商（如极验）而变化
         return {
           lot_number: (window as any).lot_number || '',
           captcha_output: (window as any).captcha_output || '',
@@ -80,13 +69,11 @@ export class CaptchaService {
   }
 
   /**
-   * 模拟滑块验证（适用于测试目的）
+   * 模拟滑块验证
    */
   async mockCaptcha(): Promise<any> {
-    // 这是一个模拟实现，生产环境中应替换为真实的验证处理
     this.logger.log('使用模拟滑块验证数据');
     
-    // 生成模拟的验证参数
     return {
       lot_number: Date.now().toString(),
       captcha_output: 'mock_captcha_output',

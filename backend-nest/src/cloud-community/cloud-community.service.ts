@@ -56,7 +56,7 @@ export class CloudCommunityService {
   ) {}
 
   /**
-   * 创建云盘账号
+   * 创建云盘社区账号
    */
   async createAccount(createAccountDto: CreateCloudAccountDto): Promise<CloudAccount> {
     const { username, email, password, is_active = true } = createAccountDto;
@@ -70,8 +70,7 @@ export class CloudCommunityService {
       throw new Error('账号已存在');
     }
 
-    // 密码需要以123云盘要求的格式存储（通常是MD5哈希）
-    // 根据提供的curl命令，密码似乎需要特定的哈希处理
+    // 密码需要以123云盘社区要求的格式存储
     const hashedPassword = this.hashFor123pan(password);
 
     const [id] = await this.knex<CloudAccount>('cloud_accounts').insert({
@@ -121,11 +120,7 @@ export class CloudCommunityService {
       .where({ id: accountId })
       .update(updateData);
   }
-
-  /**
-   * 为123云盘格式哈希密码
-   * 根据curl示例，密码似乎需要MD5哈希
-   */
+  
   private hashFor123pan(password: string): string {
     return crypto.createHash('md5').update(password).digest('hex');
   }
@@ -156,7 +151,6 @@ export class CloudCommunityService {
       }
 
       // 检查是否需要处理滑块验证
-      // 123云盘使用极验滑块验证，需要先获取验证参数
       const captchaData = await this.handleCaptcha(account);
       
       // 发送登录请求
@@ -229,9 +223,6 @@ export class CloudCommunityService {
     }
   }
 
-  /**
-   * 发布帖子到云盘社区
-   */
   async createPostInCommunity(createPostDto: CreateCloudPostDto): Promise<{ success: boolean; postId?: string; error?: string }> {
     try {
       const account = await this.getAccountById(createPostDto.account_id);
@@ -239,7 +230,6 @@ export class CloudCommunityService {
         return { success: false, error: '账号不存在或未登录' };
       }
 
-      // 发送发帖请求
       const postUrl = 'https://123panfx.com/?thread-create.htm';
       
       const config: AxiosRequestConfig = {
@@ -290,10 +280,7 @@ export class CloudCommunityService {
       return { success: false, error: error.message };
     }
   }
-
-  /**
-   * 删除云盘社区的帖子
-   */
+  
   async deletePostFromCommunity(accountId: number, postId: string): Promise<{ success: boolean; error?: string }> {
     try {
       const account = await this.getAccountById(accountId);
@@ -301,7 +288,6 @@ export class CloudCommunityService {
         return { success: false, error: '账号不存在或未登录' };
       }
 
-      // 发送删除帖子请求
       const deleteUrl = `https://123panfx.com/?post-delete-${postId}.htm`;
       
       const config: AxiosRequestConfig = {
@@ -339,10 +325,7 @@ export class CloudCommunityService {
       return { success: false, error: error.message };
     }
   }
-
-  /**
-   * 保存帖子记录
-   */
+  
   private async savePostRecord(post: Omit<CloudPost, 'id' | 'created_at' | 'updated_at'>): Promise<void> {
     await this.knex<CloudPost>('cloud_posts').insert({
       ...post,
@@ -350,10 +333,7 @@ export class CloudCommunityService {
       updated_at: new Date(),
     });
   }
-
-  /**
-   * 更新帖子状态
-   */
+  
   private async updatePostStatus(postId: string, status: string): Promise<void> {
     await this.knex<CloudPost>('cloud_posts')
       .where({ post_id: postId })
@@ -362,10 +342,7 @@ export class CloudCommunityService {
         updated_at: new Date() 
       });
   }
-
-  /**
-   * 从响应中提取帖子ID
-   */
+  
   private extractPostIdFromResponse(response: any): string | null {
     // 根据实际响应格式来提取帖子ID
     // 这里是示例，实际需要根据真实响应来实现
@@ -378,18 +355,12 @@ export class CloudCommunityService {
     }
     return null;
   }
-
-  /**
-   * 获取所有帖子记录
-   */
+  
   async getAllPosts(): Promise<CloudPost[]> {
     return this.knex<CloudPost>('cloud_posts')
       .orderBy('published_at', 'desc');
   }
-
-  /**
-   * 根据账号获取帖子记录
-   */
+  
   async getPostsByAccount(accountId: number): Promise<CloudPost[]> {
     return this.knex<CloudPost>('cloud_posts')
       .where({account_id: accountId})

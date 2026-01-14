@@ -6,10 +6,7 @@ import { JwtAuthGuard } from '@/auth/guards/jwt-auth.guard';
 @UseGuards(JwtAuthGuard)
 export class CloudCommunityController {
   constructor(private readonly cloudCommunityService: CloudCommunityService) {}
-
-  /**
-   * 创建云盘账号
-   */
+  
   @Post('accounts')
   async createAccount(@Body() createAccountDto: CreateCloudAccountDto) {
     const result = await this.cloudCommunityService.createAccount(createAccountDto);
@@ -18,10 +15,7 @@ export class CloudCommunityController {
       data: result,
     };
   }
-
-  /**
-   * 获取所有云盘账号
-   */
+  
   @Get('accounts')
   async getAllAccounts() {
     const result = await this.cloudCommunityService.getAllAccounts();
@@ -30,10 +24,7 @@ export class CloudCommunityController {
       data: result,
     };
   }
-
-  /**
-   * 登录到云盘社区
-   */
+  
   @Post('login/:accountId')
   async loginToCommunity(@Param('accountId') accountId: string) {
     const result = await this.cloudCommunityService.loginToCommunity(Number(accountId));
@@ -42,10 +33,7 @@ export class CloudCommunityController {
       data: result,
     };
   }
-
-  /**
-   * 发布帖子到云盘社区
-   */
+  
   @Post('posts')
   async createPostInCommunity(@Body() createPostDto: CreateCloudPostDto) {
     const result = await this.cloudCommunityService.createPostInCommunity(createPostDto);
@@ -54,10 +42,7 @@ export class CloudCommunityController {
       data: result,
     };
   }
-
-  /**
-   * 删除云盘社区的帖子
-   */
+  
   @Delete('posts/:postId/account/:accountId')
   async deletePostFromCommunity(
     @Param('accountId') accountId: string,
@@ -70,9 +55,6 @@ export class CloudCommunityController {
     };
   }
 
-  /**
-   * 获取所有帖子记录
-   */
   @Get('posts')
   async getAllPosts() {
     const result = await this.cloudCommunityService.getAllPosts();
@@ -83,9 +65,6 @@ export class CloudCommunityController {
     };
   }
 
-  /**
-   * 根据账号获取帖子记录
-   */
   @Get('posts/account/:accountId')
   async getPostsByAccount(@Param('accountId') accountId: string) {
     const result = await this.cloudCommunityService.getPostsByAccount(Number(accountId));
