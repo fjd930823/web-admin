@@ -270,9 +270,16 @@ export interface Post {
   username: string;
   password: string;
   title: string;
+  board: string;
+  tags?: string;
   content: string;
   status?: 'success' | 'failed';
   error_message?: string;
+  creator?: {
+    id: number;
+    username: string;
+    email: string;
+  };
   created_at?: string;
 }
 
@@ -285,7 +292,7 @@ export interface PostFormData {
   content: string;
 }
 
-export async function submitPost(data: { username: string; password: string; title: string; content: string }) {
+export async function submitPost(data: { username: string; password: string; title: string; board: string; tags?: string; content: string }) {
   return request<{
     success: boolean;
     data?: any;
