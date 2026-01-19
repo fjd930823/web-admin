@@ -1,9 +1,10 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { PageContainer } from '@ant-design/pro-components';
 import { Card, Form, Input, Button, Space, message, Modal, Spin, Row, Col, List, Rate, Image, Empty, Tag, Select, Divider } from 'antd';
 import { PlusOutlined, MinusCircleOutlined, SearchOutlined } from '@ant-design/icons';
 import { Editor } from '@tinymce/tinymce-react';
 import { submitPost, searchContent, getSearchDetail } from '@/services/api';
+import { getBoardTags, convertTagNamesToIds } from '@/utils/tagMapping';
 import './index.less';
 
 const { CheckableTag } = Tag;
@@ -50,6 +51,9 @@ const PostCreate: React.FC = () => {
   const [selectedDetail, setSelectedDetail] = useState<any>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const editorRefs = useRef<any[]>([]);
+  
+  // 动态加载的标签映射
+  const [boardTagsMap, setBoardTagsMap] = useState<Record<string, Record<string, string[]>>>({});
 
   // 板块选项
   const boardOptions = [
@@ -66,73 +70,6 @@ const PostCreate: React.FC = () => {
     { label: '工具', value: '工具' },
     { label: '体育专区', value: '体育专区' },
   ];
-
-  // 板块和标签的映射关系
-  const boardTagsMap: Record<string, Record<string, string[]>> = {
-    '资源互助': {
-      '分类': ['求资源', '求搬运', '求帮助'],
-      '状态': ['已解决', '未解决'],
-      '资源类别': ['电影', '电视剧', '动漫', '综艺', '原盘', '音乐', '其他']
-    },
-    '反馈': {
-      '分类': ['连接失效', '网站问题', '其他问题'],
-      '状态': ['已解决', '未解决']
-    },
-    '电影': {
-      '画质': ['480p', '720p', '1080p', '2K', '4K'],
-      '类型': ['古装', '家庭', '恐怖', '灾难', '科幻', '动画', '纪录片', '历史', '剧情', '惊悚', '犯罪', '冒险', '奇幻', '悬疑', '爱情', '战争', '动作', '喜剧', '演唱会'],
-      '地区': ['大陆', '香港', '台湾', '韩国', '日本', '欧美', '其他']
-    },
-    '电视剧': {
-      '分辨率': ['480p', '720p', '1080p', '2K', '4K'],
-      '资源来源': ['蓝光原盘/ISO', '蓝光原盘/REMUX', 'BDRip/BluRayEncode', 'WEB-DL/WEBRip', 'HDTV/HDRip'],
-      '画质': ['杜比视界/DV', 'HDR', 'HQ', 'EDR', 'HLG', 'SDR', '60fps'],
-      '类型': ['古装', '喜剧', '动作', '战争', '爱情', '悬疑', '奇幻', '冒险', '犯罪', '惊悚', '剧情', '历史', '纪录片', '动画'],
-      '地区': ['大陆', '香港', '台湾', '韩国', '日本', '欧美', '其他'],
-      '状态': ['完结', '更新中']
-    },
-    '动漫': {
-      '分辨率': ['480p', '720p', '1080p', '2K', '4K', '8K'],
-      '来源': ['BDRip/BluRayEncode', '蓝光原盘/REMUX', 'WEB-DL/WEBRip', '超分/AI修复', '蓝光原盘/ISO'],
-      '类型': ['泡面', '校园', '悬疑', '恋爱', '魔法', '冒险', '历史', '机战', '百合', '运动', '励志', '音乐', '推理', '催泪', '治愈', '萌系', '耽美', '原创', '漫画改', '小说改', '游戏改', '热血', '穿越', '奇幻', '战斗', '搞笑', '日常', '科幻', '武侠', '偶像'],
-      '地区': ['中国', '日本', '美国', '其他'],
-      '状态': ['完结', '更新中'],
-      '字幕语言': ['简中', '繁中', '简日双语', '繁日双语', '简英双语', '生肉'],
-      '字幕种类': ['内封', '外挂', '内嵌']
-    },
-    '综艺': {
-      '分类': ['脱口秀', '音乐舞台', '相声小品', '生活情感', '真人秀', '其他'],
-      '地区': ['大陆', '港台', '韩国', '日本', '欧美', '其他'],
-      '状态': ['完结', '更新中']
-    },
-    '4K原盘': {
-      '分类': ['4K电影', '4K聚集', '4K纪录片', '4K演唱会', '4K其他'],
-      '格式': ['MKV', 'ISO', 'BDMV', 'M2TS', 'TS', 'MP4']
-    },
-    '音频': {
-      '分类': ['音乐', '有声读物', '有声小说', '相声评书', '广播剧', '电台'],
-      '地区': ['内地', '港台', '日本', '韩国', '其他', '欧美'],
-      '歌曲风格': ['R&B', 'Disco', '雷鬼', '民谣', '乡村', '古典', '摇滚', '流行', '说唱', '电子', 'ACG', '爵士', '朋克'],
-      '有声类别': ['小说', '娱乐', '课程', '影视', '商业财经', '个人成长', '资讯', '悬疑', '人文文学', '历史', '经典名著'],
-      '音频格式': ['WAV', 'MPEG', 'WAVE', 'CD', 'AMR', 'OGG', 'WMA', 'AAC', 'MP3', 'APE', 'ALAC', 'FLAC', 'SACD']
-    },
-    '电子书': {
-      '分类': ['网络文学', '出版文学', '名人传记', '儿童读物', '影视原著', '人文社科', '经管励志', '轻小说', '漫画', '电子课程', '其他'],
-      '格式': ['TXT', 'EPUB', 'MOBI', 'PDF', 'AZW3', '其他'],
-      '地区': ['大陆', '港台', '日韩', '欧美', '其他']
-    },
-    '设计专区': {
-      '分类': ['AI合成', '私模写真', '名站秀人', '高清壁纸', '其他', '设计教程']
-    },
-    '工具': {
-      '工具': ['电脑', '手机', '其他']
-    },
-    '体育专区': {
-      '其他': ['排球', '网球', '乒乓球', '其他运动'],
-      '篮球': ['NBA', '国际篮球', '国内篮球', '篮球节目'],
-      '足球': ['苏超', '英超', '德甲', '欧冠', '世界杯', '西甲', '意甲', '足球节目']
-    }
-  };
 
   // 获取当前板块的标签分组
   const getTagGroups = (board: string) => {
@@ -164,12 +101,25 @@ const PostCreate: React.FC = () => {
     setForms([...forms, { accounts: '', title: '', board: '', tags: [], content: '' }]);
   };
 
-  // 处理板块变化，清空标签
-  const handleBoardChange = (index: number, board: string) => {
+  // 处理板块变化，清空标签并动态加载标签选项
+  const handleBoardChange = async (index: number, board: string) => {
     const newForms = [...forms];
     newForms[index].board = board;
     newForms[index].tags = []; // 清空标签
     setForms(newForms);
+    
+    // 如果该板块的标签还未加载，则加载
+    if (board && !boardTagsMap[board]) {
+      try {
+        const tags = await getBoardTags(board);
+        setBoardTagsMap(prev => ({
+          ...prev,
+          [board]: tags
+        }));
+      } catch (error) {
+        console.error('加载板块标签失败:', error);
+      }
+    }
   };
 
   // 删除表单
@@ -189,23 +139,15 @@ const PostCreate: React.FC = () => {
     setForms(newForms);
   };
 
-  // 解析账号密码（支持批量输入）
-  const parseAccounts = (accountsText: string): Array<{ username: string; password: string }> => {
+  // 解析账号（支持批量输入，每行一个账号）
+  const parseAccounts = (accountsText: string): string[] => {
     const lines = accountsText.trim().split('\n');
-    const accounts: Array<{ username: string; password: string }> = [];
+    const accounts: string[] = [];
     
     for (const line of lines) {
       const trimmedLine = line.trim();
       if (!trimmedLine) continue;
-      
-      // 支持多种分隔符：空格、制表符、逗号、冒号
-      const parts = trimmedLine.split(/[\s\t,，:：]+/);
-      if (parts.length >= 2) {
-        accounts.push({
-          username: parts[0].trim(),
-          password: parts[1].trim(),
-        });
-      }
+      accounts.push(trimmedLine);
     }
     
     return accounts;
@@ -217,7 +159,7 @@ const PostCreate: React.FC = () => {
     for (let i = 0; i < forms.length; i++) {
       const form = forms[i];
       if (!form.accounts.trim()) {
-        message.error(`第 ${i + 1} 个表单：请输入账号密码`);
+        message.error(`第 ${i + 1} 个表单：请输入账号`);
         return;
       }
       if (!form.title.trim()) {
@@ -243,29 +185,31 @@ const PostCreate: React.FC = () => {
         const accounts = parseAccounts(form.accounts);
         
         if (accounts.length === 0) {
-          message.warning('账号密码格式不正确，已跳过');
+          message.warning('账号格式不正确，已跳过');
           continue;
         }
 
+        // 转换标签名称为ID
+        const tagIds = await convertTagNamesToIds(form.board, form.tags);
+        
         // 遍历提交每个账号
-        for (const account of accounts) {
+        for (const username of accounts) {
           try {
             await submitPost({
-              username: account.username,
-              password: account.password,
+              username: username,
               title: form.title,
               board: form.board,
-              tags: form.tags.join(','), // 将标签数组转为逗号分隔的字符串
+              tags: tagIds, // 已转换为逗号分隔的标签ID字符串
               content: form.content,
             });
             
             allResults.push({
-              username: account.username,
+              username: username,
               success: true,
             });
           } catch (error: any) {
             allResults.push({
-              username: account.username,
+              username: username,
               success: false,
               error: error.message || '提交失败',
             });
@@ -388,13 +332,14 @@ const PostCreate: React.FC = () => {
               >
                 <Form layout="vertical">
                   <Form.Item
-                    label="账号密码（每行一个，格式：账号 密码 或 账号,密码）"
+                    label="账号（每行一个账号/手机号）"
                     required
+                    tooltip="无需密码，系统将使用配置文件中的 token 进行发帖"
                   >
                     <TextArea
                       value={form.accounts}
                       onChange={(e) => updateForm(index, 'accounts', e.target.value)}
-                      placeholder="示例：&#10;user1 password1&#10;user2 password2&#10;user3,password3"
+                      placeholder="示例：&#10;13800138000&#10;13900139000&#10;account1"
                       rows={4}
                     />
                   </Form.Item>

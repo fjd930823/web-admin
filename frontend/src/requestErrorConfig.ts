@@ -20,12 +20,14 @@ interface ResponseStructure {
 
 export const errorConfig: RequestConfig = {
   errorConfig: {
-    errorThrower: (res) => {
-      const { success, data, errorCode, errorMessage, showType } = res as unknown as ResponseStructure;
+    errorThrower: (res: any) => {
+      const { success, data, errorCode, errorMessage, message: msg, showType } = res;
       if (!success) {
-        const error: any = new Error(errorMessage);
+        // 优先使用 message，其次 errorMessage
+        const errMsg = msg || errorMessage || '请求失败';
+        const error: any = new Error(errMsg);
         error.name = 'BizError';
-        error.info = { errorCode, errorMessage, showType, data };
+        error.info = { errorCode, errorMessage: errMsg, showType, data };
         throw error;
       }
     },
@@ -79,10 +81,8 @@ export const errorConfig: RequestConfig = {
   ],
   responseInterceptors: [
     (response) => {
-      const { data } = response as unknown as ResponseStructure;
-      if (!data?.success) {
-        message.error(data?.message || '请求失败');
-      }
+      // errorThrower 会自动处理 success: false 的情况
+      // 这里不需要额外处理
       return response;
     },
   ],

@@ -1,10 +1,54 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { PageContainer, ProTable, ProColumns } from '@ant-design/pro-components';
 import { Modal, Tag, Button, message, Space } from 'antd';
 import { DeleteOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import type { ActionType } from '@ant-design/pro-components';
 import { getPostHistory, deletePost, Post } from '@/services/api';
 import { useModel } from '@umijs/max';
+import { convertTagIdsToNames } from '@/utils/tagMapping';
+
+// 标签显示组件（异步加载标签名称）
+const TagsDisplay: React.FC<{ boardName: string; tagIds: string }> = ({ boardName, tagIds }) => {
+  const [tagNames, setTagNames] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadTags = async () => {
+      if (!tagIds || !boardName) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const names = await convertTagIdsToNames(boardName, tagIds);
+        setTagNames(names);
+      } catch (error) {
+        console.error('加载标签名称失败:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadTags();
+  }, [boardName, tagIds]);
+
+  if (loading) {
+    return <Tag>加载中...</Tag>;
+  }
+
+  if (tagNames.length === 0) {
+    return <span>-</span>;
+  }
+
+  return (
+    <Space size={[0, 4]} wrap>
+      {tagNames.slice(0, 3).map((name, idx) => (
+        <Tag key={idx} color="cyan" style={{ fontSize: '12px' }}>
+          {name}
+        </Tag>
+      ))}
+      {tagNames.length > 3 && <Tag>+{tagNames.length - 3}</Tag>}
+    </Space>
+  );
+};
 
 const PostHistory: React.FC = () => {
   const actionRef = useRef<ActionType>();
@@ -96,25 +140,16 @@ const PostHistory: React.FC = () => {
       width: 200,
       search: false,
       ellipsis: true,
-      render: (text) => {
-        if (!text) return '-';
-        const tags = text.split(',').filter((t: string) => t.trim());
-        return (
-          <Space size={[0, 4]} wrap>
-            {tags.slice(0, 3).map((tag: string, idx: number) => (
-              <Tag key={idx} color="cyan" style={{ fontSize: '12px' }}>
-                {tag.split(':')[1] || tag}
-              </Tag>
-            ))}
-            {tags.length > 3 && <Tag>+{tags.length - 3}</Tag>}
-          </Space>
-        );
+      render: (text, record) => {
+        if (!text || typeof text !== 'string') return '-';
+        // 使用异步组件显示标签名称
+        return <TagsDisplay boardName={record.board} tagIds={text} />;
       },
     },
     {
       title: '状态',
       dataIndex: 'status',
-      width: 100,
+      width: 120,
       valueEnum: {
         success: {
           text: '成功',
@@ -124,13 +159,23 @@ const PostHistory: React.FC = () => {
           text: '失败',
           status: 'Error',
         },
+        no_token: {
+          text: '无Token',
+          status: 'Warning',
+        },
+        token_expired: {
+          text: 'Token过期',
+          status: 'Warning',
+        },
       },
       render: (_, record) => {
-        const statusConfig = {
+        const statusConfig: Record<string, { color: string; text: string }> = {
           success: { color: 'success', text: '成功' },
           failed: { color: 'error', text: '失败' },
+          no_token: { color: 'warning', text: '无Token' },
+          token_expired: { color: 'warning', text: 'Token过期' },
         };
-        const config = statusConfig[record.status || 'success'];
+        const config = statusConfig[record.status || 'success'] || { color: 'default', text: record.status || '未知' };
         return <Tag color={config.color}>{config.text}</Tag>;
       },
     },
@@ -282,22 +327,28 @@ const PostHistory: React.FC = () => {
               <strong>板块：</strong>
               <Tag color="blue">{selectedPost.board || '资源互助'}</Tag>
             </div>
-            {selectedPost.tags && (
+            {selectedPost.tags && typeof selectedPost.tags === 'string' && (
               <div>
                 <strong>标签：</strong>
-                <Space size={[0, 4]} wrap style={{ marginLeft: '8px' }}>
-                  {selectedPost.tags.split(',').filter((t: string) => t.trim()).map((tag: string, idx: number) => (
-                    <Tag key={idx} color="cyan">
-                      {tag.split(':')[1] || tag}
-                    </Tag>
-                  ))}
-                </Space>
+                <div style={{ marginTop: '8px' }}>
+                  <TagsDisplay boardName={selectedPost.board} tagIds={selectedPost.tags} />
+                </div>
               </div>
             )}
             <div>
               <strong>状态：</strong>
-              <Tag color={selectedPost.status === 'success' ? 'success' : 'error'}>
-                {selectedPost.status === 'success' ? '成功' : '失败'}
+              <Tag color={
+                selectedPost.status === 'success' ? 'success' :
+                selectedPost.status === 'no_token' || selectedPost.status === 'token_expired' ? 'warning' :
+                'error'
+              }>
+                {
+                  selectedPost.status === 'success' ? '成功' :
+                  selectedPost.status === 'failed' ? '失败' :
+                  selectedPost.status === 'no_token' ? '无Token' :
+                  selectedPost.status === 'token_expired' ? 'Token过期' :
+                  selectedPost.status || '未知'
+                }
               </Tag>
             </div>
             {selectedPost.error_message && (

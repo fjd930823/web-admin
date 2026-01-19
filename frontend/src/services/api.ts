@@ -268,7 +268,6 @@ export async function deleteTask(id: number) {
 export interface Post {
   id?: number;
   username: string;
-  password: string;
   title: string;
   board: string;
   tags?: string;
@@ -284,15 +283,12 @@ export interface Post {
 }
 
 export interface PostFormData {
-  accounts: Array<{
-    username: string;
-    password: string;
-  }>;
+  accounts: string[];
   title: string;
   content: string;
 }
 
-export async function submitPost(data: { username: string; password: string; title: string; board: string; tags?: string; content: string }) {
+export async function submitPost(data: { username: string; title: string; board: string; tags?: string; content: string }) {
   return request<{
     success: boolean;
     data?: any;

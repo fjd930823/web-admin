@@ -1,23 +1,15 @@
 import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
 
-export class CreatePostDto {
+export class SaveXiunoTokenDto {
   @IsString()
   @IsNotEmpty()
   username: string;
 
   @IsString()
   @IsNotEmpty()
-  title: string;
-
-  @IsString()
-  @IsNotEmpty()
-  board: string;
+  token: string;
 
   @IsString()
   @IsOptional()
-  tags?: string;
-
-  @IsString()
-  @IsNotEmpty()
-  content: string;
+  cookies?: string;
 }

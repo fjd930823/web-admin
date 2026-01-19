@@ -21,6 +21,23 @@ export class PostsController {
   @Post()
   async create(@Body() createPostDto: CreatePostDto, @Request() req) {
     const post = await this.postsService.create(createPostDto, req.user?.id);
+    
+    if (post.status === 'no_token') {
+      return {
+        success: false,
+        data: post,
+        message: post.error_message || '未找到 Token 配置',
+      };
+    }
+    
+    if (post.status === 'token_expired') {
+      return {
+        success: false,
+        data: post,
+        message: post.error_message || 'Token 已过期',
+      };
+    }
+    
     return {
       success: post.status === 'success',
       data: post,
@@ -45,4 +62,5 @@ export class PostsController {
       message: '删除成功',
     };
   }
+
 }
