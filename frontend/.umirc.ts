@@ -95,6 +95,12 @@ export default defineConfig({
       ],
     },
     {
+      path: '/tokens',
+      name: 'Token 管理',
+      icon: 'key',
+      component: './Token/Manage',
+    },
+    {
       path: '/',
       redirect: '/welcome',
     },

@@ -3,7 +3,7 @@ import * as path from 'path';
 
 const config: { [key: string]: Knex.Config } = {
   development: {
-    client: 'sqlite3',
+    client: 'better-sqlite3',
     connection: {
       filename: path.join(__dirname, 'database', 'database.sqlite'),
     },
@@ -19,7 +19,7 @@ const config: { [key: string]: Knex.Config } = {
   },
 
   production: {
-    client: 'sqlite3',
+    client: 'better-sqlite3',
     connection: {
       filename: path.join(__dirname, 'database', 'database.sqlite'),
     },

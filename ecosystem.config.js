@@ -33,7 +33,7 @@ module.exports = {
       cwd: './backend-nest',
 
       // 启动脚本路径（相对于 cwd）
-      script: 'dist/main.js',
+      script: 'dist/src/main.js',
 
       // 实例数量：'max' = CPU核心数，数字 = 固定数量，-1 = CPU核心数-1
       instances: 'max',

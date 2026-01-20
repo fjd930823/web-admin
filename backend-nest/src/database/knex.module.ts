@@ -8,7 +8,7 @@ const knexProvider = {
   provide: KNEX_CONNECTION,
   useFactory: (): Knex => {
     const knexInstance = knex({
-      client: 'sqlite3',
+      client: 'better-sqlite3',
       connection: {
         filename: path.join(process.cwd(), 'database', 'database.sqlite'),
       },

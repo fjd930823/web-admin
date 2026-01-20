@@ -741,4 +741,23 @@ curl -X POST http://localhost:3000/posts ...
 
 ---
 
-**祝你使用愉快！** 🚀
+yum install -y gcc-toolset-11 && \
+scl enable gcc-toolset-11 bash << 'EOFSCL'
+echo "=== GCC 版本 ===" && \
+gcc --version && \
+cd /www/wwwroot/web-admin/backend-nest/node_modules/.pnpm/better-sqlite3@*/node_modules/better-sqlite3 && \
+echo "=== 开始编译 better-sqlite3 ===" && \
+npm run build-release && \
+echo "=== 编译结果 ===" && \
+ls -la build/Release/better_sqlite3.node && \
+cd /www/wwwroot/web-admin/backend-nest && \
+echo "=== 编译项目 ===" && \
+rm -rf dist && \
+npm run build && \
+cd /www/wwwroot/web-admin && \
+echo "=== 重启服务 ===" && \
+pm2 delete all && \
+pm2 start ecosystem.config.js && \
+sleep 3 && \
+pm2 status
+EOFSCL

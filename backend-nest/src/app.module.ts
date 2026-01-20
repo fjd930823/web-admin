@@ -8,6 +8,7 @@ import { MergeRequestsModule } from './merge-requests/merge-requests.module';
 import { PostsModule } from './posts/posts.module';
 import { SearchModule } from './search/search.module';
 import { KnexModule } from './database/knex.module';
+import { TokensModule } from './tokens/tokens.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { KnexModule } from './database/knex.module';
     MergeRequestsModule,
     PostsModule,
     SearchModule,
+    TokensModule,
   ],
 })
 export class AppModule {}

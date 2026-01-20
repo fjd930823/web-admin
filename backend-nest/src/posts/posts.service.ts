@@ -54,8 +54,12 @@ export class PostsService {
   ) {
     this.xiunoBaseUrl = this.configService.get<string>('XIUNO_BASE_URL', 'https://www.123panfx.com/');
     
-    // Token 配置文件路径（项目根目录）
-    this.tokenConfigPath = path.join(process.cwd(), '..', 'xiuno-tokens.conf');
+    // Token 配置文件路径（开发环境在上一级目录，生产环境在当前目录）
+    this.tokenConfigPath = path.join(
+      process.cwd(),
+      process.env.NODE_ENV === 'production' ? '' : '../',
+      'xiuno-tokens.conf'
+    );
   }
   
   /**
