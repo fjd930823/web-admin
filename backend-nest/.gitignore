@@ -37,3 +37,6 @@ lerna-debug.log*
 # Database
 database/*.sqlite
 database/*.db
+
+# Config files with sensitive data
+xiuno-tokens.conf

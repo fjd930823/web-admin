@@ -741,11 +741,19 @@ curl -X POST http://localhost:3000/posts ...
 
 ---
 
-yum install -y gcc-toolset-11 && \
+yum install -y gcc-toolset-11 python38 && \
 scl enable gcc-toolset-11 bash << 'EOFSCL'
-echo "=== GCC 版本 ===" && \
+echo "=== 环境版本 ===" && \
 gcc --version && \
-cd /www/wwwroot/web-admin/backend-nest/node_modules/.pnpm/better-sqlite3@*/node_modules/better-sqlite3 && \
+python3.8 --version && \
+export PYTHON=/usr/bin/python3.8 && \
+export npm_config_python=/usr/bin/python3.8 && \
+echo "python=/usr/bin/python3.8" > /www/wwwroot/web-admin/backend-nest/.npmrc && \
+cd /www/wwwroot/web-admin/backend-nest && \
+echo "=== 清理旧编译 ===" && \
+rm -rf node_modules/.pnpm/better-sqlite3@*/node_modules/better-sqlite3/build && \
+rm -rf ~/.cache/node-gyp && \
+cd node_modules/.pnpm/better-sqlite3@*/node_modules/better-sqlite3 && \
 echo "=== 开始编译 better-sqlite3 ===" && \
 npm run build-release && \
 echo "=== 编译结果 ===" && \
@@ -761,3 +769,16 @@ pm2 start ecosystem.config.js && \
 sleep 3 && \
 pm2 status
 EOFSCL
+
+
+
+cd /www/wwwroot/web-admin/backend-nest
+
+# 创建 .npmrc 文件
+cat > .npmrc << EOF
+python=/usr/bin/python3.8
+EOF
+
+# 清理并重装
+rm -rf node_modules pnpm-lock.yaml ~/.cache/node-gyp
+pnpm install

@@ -63,4 +63,16 @@ export class PostsController {
     };
   }
 
+  @Post('upload-image')
+  async uploadImage(@Body() body: any) {
+    const result = await this.postsService.uploadImage(body);
+    return result;
+  }
+
+  @Post('upload-remote-image')
+  async uploadRemoteImage(@Body() body: { imageUrl: string }) {
+    const result = await this.postsService.uploadRemoteImage(body.imageUrl);
+    return result;
+  }
+
 }

@@ -6,7 +6,15 @@ import { initializeDatabase } from './database/database.providers';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    bodyParser: true,
+    rawBody: false,
+  });
+
+  // 增加请求体大小限制（用于处理富文本内容和图片）
+  const expressApp = app.getHttpAdapter().getInstance();
+  expressApp.use(require('body-parser').json({ limit: '50mb' }));
+  expressApp.use(require('body-parser').urlencoded({ limit: '50mb', extended: true }));
 
   // 设置全局路由前缀
   app.setGlobalPrefix('api');

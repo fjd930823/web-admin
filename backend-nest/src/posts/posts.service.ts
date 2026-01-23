@@ -54,12 +54,14 @@ export class PostsService {
   ) {
     this.xiunoBaseUrl = this.configService.get<string>('XIUNO_BASE_URL', 'https://www.123panfx.com/');
     
-    // Token 配置文件路径（开发环境在上一级目录，生产环境在当前目录）
-    this.tokenConfigPath = path.join(
-      process.cwd(),
-      process.env.NODE_ENV === 'production' ? '' : '../',
-      'xiuno-tokens.conf'
-    );
+    // Token 配置文件路径
+    // 无论开发还是生产环境，代码都运行在 dist 目录下
+    // __dirname 是 backend-nest/dist/src/posts，需要返回到 backend-nest 根目录
+    this.tokenConfigPath = path.join(__dirname, '../../../xiuno-tokens.conf');
+    
+    this.logger.log(`Token 配置文件路径: ${this.tokenConfigPath}`);
+    this.logger.log(`__dirname: ${__dirname}`);
+    this.logger.log(`文件是否存在: ${fs.existsSync(this.tokenConfigPath)}`);
   }
   
   /**
@@ -430,5 +432,292 @@ export class PostsService {
 
   async remove(id: number): Promise<void> {
     await this.knex<Post>('posts').where({ id }).del();
+  }
+
+  /**
+   * 上传图片到论坛
+   */
+  async uploadImage(imageData: {
+    is_image: string;
+    width: number;
+    height: number;
+    name: string;
+    data: string;
+  }): Promise<{ success: boolean; url?: string; message?: string; width?: number; height?: number }> {
+    try {
+      const axios = require('axios');
+      
+      this.logger.log(`开始上传图片: ${imageData.name}`);
+      this.logger.log(`图片尺寸: ${imageData.width}x${imageData.height}`);
+      
+      // 构造上传数据
+      const formData = new URLSearchParams();
+      formData.append('is_image', imageData.is_image);
+      formData.append('width', imageData.width.toString());
+      formData.append('height', imageData.height.toString());
+      formData.append('name', imageData.name);
+      formData.append('data', imageData.data);
+      
+      // 从配置文件获取第一个可用的 token（用于上传图片）
+      const token = this.getFirstAvailableToken();
+      
+      if (!token) {
+        this.logger.error('未找到可用的 Token 用于上传图片');
+        return {
+          success: false,
+          message: '未找到可用的 Token，请配置 xiuno-tokens.conf',
+        };
+      }
+      
+      this.logger.log(`使用 Token 前缀: ${token.substring(0, 20)}...`);
+      
+      // 发送上传请求
+      const response = await axios.post(
+        `${this.xiunoBaseUrl}?attach-create.htm`,
+        formData.toString(),
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+            'Cookie': `bbs_token=${token}`,
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
+            'Referer': `${this.xiunoBaseUrl}?thread-create-0.htm`,
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'text/plain, */*; q=0.01',
+          },
+          timeout: 30000, // 图片上传可能需要更长时间
+        }
+      );
+      
+      this.logger.log(`===== 图片上传响应 =====`);
+      this.logger.log(`状态码: ${response.status}`);
+      this.logger.log(`响应数据: ${JSON.stringify(response.data)}`);
+      this.logger.log(`========================`);
+      
+      // 解析响应
+      if (response.data && typeof response.data === 'object') {
+        const code = response.data.code;
+        const message = response.data.message;
+        
+        if (code === '0' || code === 0) {
+          // 上传成功
+          this.logger.log(`✓ 图片上传成功: ${message.url}`);
+          return {
+            success: true,
+            url: message.url,
+            width: message.width,
+            height: message.height,
+          };
+        } else {
+          this.logger.warn(`图片上传失败 - 错误码: ${code}`);
+          return {
+            success: false,
+            message: `图片上传失败(错误码:${code})`,
+          };
+        }
+      } else {
+        this.logger.error(`无法解析的响应格式`);
+        return {
+          success: false,
+          message: '图片上传失败：服务器返回了无法识别的响应格式',
+        };
+      }
+    } catch (error) {
+      this.logger.error(`图片上传异常: ${error.message}`);
+      
+      if (error.response) {
+        this.logger.error(`响应状态: ${error.response.status}`);
+        this.logger.error(`响应数据: ${JSON.stringify(error.response.data)}`);
+      }
+      
+      return {
+        success: false,
+        message: `图片上传失败: ${error.message}`,
+      };
+    }
+  }
+
+  /**
+   * 上传远程图片到论坛
+   */
+  async uploadRemoteImage(imageUrl: string): Promise<{ success: boolean; url?: string; message?: string; width?: number; height?: number }> {
+    try {
+      const axios = require('axios');
+      
+      this.logger.log(`开始下载远程图片: ${imageUrl}`);
+      
+      // 下载远程图片
+      const imageResponse = await axios.get(imageUrl, {
+        responseType: 'arraybuffer',
+        timeout: 30000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        },
+      });
+      
+      // 将图片转换为 base64
+      const base64Data = `data:${imageResponse.headers['content-type']};base64,${Buffer.from(imageResponse.data, 'binary').toString('base64')}`;
+      
+      // 获取图片尺寸（使用 sharp 库或简单解析）
+      // 这里简单处理，使用默认尺寸，实际应该解析图片
+      let width = 800;
+      let height = 600;
+      
+      // 尝试从内容中获取实际尺寸（如果是常见格式）
+      try {
+        const buffer = Buffer.from(imageResponse.data, 'binary');
+        if (buffer[0] === 0xFF && buffer[1] === 0xD8) {
+          // JPEG 格式
+          const dimensions = this.getJpegDimensions(buffer);
+          if (dimensions) {
+            width = dimensions.width;
+            height = dimensions.height;
+          }
+        } else if (buffer[0] === 0x89 && buffer[1] === 0x50) {
+          // PNG 格式
+          const dimensions = this.getPngDimensions(buffer);
+          if (dimensions) {
+            width = dimensions.width;
+            height = dimensions.height;
+          }
+        }
+      } catch (e) {
+        this.logger.warn(`无法解析图片尺寸: ${e.message}`);
+      }
+      
+      this.logger.log(`图片尺寸: ${width}x${height}`);
+      
+      // 生成文件名
+      const ext = imageResponse.headers['content-type'].split('/')[1] || 'jpg';
+      const filename = `remote_${Date.now()}.${ext}`;
+      
+      // 调用上传接口
+      const uploadResult = await this.uploadImage({
+        is_image: '1',
+        width,
+        height,
+        name: filename,
+        data: base64Data,
+      });
+      
+      return uploadResult;
+    } catch (error) {
+      this.logger.error(`远程图片上传失败: ${error.message}`);
+      return {
+        success: false,
+        message: `远程图片上传失败: ${error.message}`,
+      };
+    }
+  }
+
+  /**
+   * 获取 JPEG 图片尺寸
+   */
+  private getJpegDimensions(buffer: Buffer): { width: number; height: number } | null {
+    try {
+      let offset = 2; // 跳过 SOI 标记
+      while (offset < buffer.length) {
+        if (buffer[offset] !== 0xFF) break;
+        
+        const marker = buffer[offset + 1];
+        offset += 2;
+        
+        // SOF 标记
+        if (marker >= 0xC0 && marker <= 0xC3) {
+          const height = buffer.readUInt16BE(offset + 3);
+          const width = buffer.readUInt16BE(offset + 5);
+          return { width, height };
+        }
+        
+        // 跳过其他段
+        const segmentLength = buffer.readUInt16BE(offset);
+        offset += segmentLength;
+      }
+    } catch (e) {
+      // 忽略错误
+    }
+    return null;
+  }
+
+  /**
+   * 获取 PNG 图片尺寸
+   */
+  private getPngDimensions(buffer: Buffer): { width: number; height: number } | null {
+    try {
+      // PNG 头部固定格式：前 8 字节是签名，然后是 IHDR 块
+      if (buffer.length < 24) return null;
+      const width = buffer.readUInt32BE(16);
+      const height = buffer.readUInt32BE(20);
+      return { width, height };
+    } catch (e) {
+      // 忽略错误
+    }
+    return null;
+  }
+
+  /**
+   * 获取第一个可用的 token（用于图片上传等操作）
+   */
+  private getFirstAvailableToken(): string | null {
+    try {
+      if (!fs.existsSync(this.tokenConfigPath)) {
+        this.logger.warn(`Token 配置文件不存在: ${this.tokenConfigPath}`);
+        return null;
+      }
+
+      const content = fs.readFileSync(this.tokenConfigPath, 'utf-8');
+      const lines = content.split('\n');
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        
+        // 跳过注释和空行
+        if (!trimmed || trimmed.startsWith('#')) {
+          continue;
+        }
+
+        const [configPhone, ...rest] = trimmed.split('=');
+        if (!configPhone || rest.length === 0) {
+          continue;
+        }
+
+        // 重新组合 rest，因为 token 部分也包含 =
+        const tokenInfo = rest.join('=');
+        
+        // 解析格式：bbs_token=xxx,expires=ISO时间
+        const parts = tokenInfo.split(',').map(s => s.trim());
+        
+        let token = '';
+        let expiresAt: Date | undefined;
+        
+        for (const part of parts) {
+          if (part.startsWith('bbs_token=')) {
+            token = part.substring('bbs_token='.length);
+          } else if (part.startsWith('expires=')) {
+            const expiresStr = part.substring('expires='.length);
+            const expires = new Date(expiresStr);
+            if (!isNaN(expires.getTime())) {
+              expiresAt = expires;
+            }
+          }
+        }
+        
+        if (!token) {
+          continue;
+        }
+
+        // 检查是否已过期
+        if (expiresAt && expiresAt < new Date()) {
+          continue;
+        }
+
+        // 返回第一个有效的 token
+        return token;
+      }
+
+      return null;
+    } catch (error) {
+      this.logger.error(`读取 Token 配置文件失败: ${error.message}`);
+      return null;
+    }
   }
 }

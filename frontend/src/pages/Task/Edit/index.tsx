@@ -3,7 +3,6 @@ import { Card, message, Spin } from 'antd';
 import React, { useEffect, useState } from 'react';
 import { history, useParams } from '@umijs/max';
 import { getTask, updateTask, getUsers } from '@/services/api';
-import moment from 'moment';
 
 const EditTask: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -22,8 +21,9 @@ const EditTask: React.FC = () => {
       const data = response.data;
       setInitialValues({
         ...data,
-        start_date: data.start_date ? moment(data.start_date) : undefined,
-        due_date: data.due_date ? moment(data.due_date) : undefined,
+        // ProFormDatePicker 可以直接使用字符串
+        start_date: data.start_date,
+        due_date: data.due_date,
       });
     } catch (error) {
       message.error('获取数据失败');

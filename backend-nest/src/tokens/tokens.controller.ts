@@ -8,11 +8,14 @@ import {
   Param,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
 import { TokensService } from './tokens.service';
 import { TokenConfigDto, BatchUpdateTokensDto } from './dto/token.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('tokens')
+@UseGuards(JwtAuthGuard)
 export class TokensController {
   constructor(private readonly tokensService: TokensService) {}
 

@@ -178,19 +178,25 @@ const PostCreate: React.FC = () => {
 
     setSubmitting(true);
     const allResults: SubmitResult[] = [];
+    const formResults: { formIndex: number; allSuccess: boolean; failedAccounts: string[] }[] = [];
 
     try {
       // 遍历每个表单
-      for (const form of forms) {
+      for (let formIndex = 0; formIndex < forms.length; formIndex++) {
+        const form = forms[formIndex];
         const accounts = parseAccounts(form.accounts);
         
         if (accounts.length === 0) {
           message.warning('账号格式不正确，已跳过');
+          formResults.push({ formIndex, allSuccess: false, failedAccounts: [] });
           continue;
         }
 
         // 转换标签名称为ID
         const tagIds = await convertTagNamesToIds(form.board, form.tags);
+        
+        let formAllSuccess = true;
+        const failedAccounts: string[] = [];
         
         // 遍历提交每个账号
         for (const username of accounts) {
@@ -213,8 +219,12 @@ const PostCreate: React.FC = () => {
               success: false,
               error: error.message || '提交失败',
             });
+            formAllSuccess = false;
+            failedAccounts.push(username); // 记录失败的账号
           }
         }
+        
+        formResults.push({ formIndex, allSuccess: formAllSuccess, failedAccounts });
       }
 
       // 显示结果
@@ -222,19 +232,57 @@ const PostCreate: React.FC = () => {
       const failCount = allResults.filter(r => !r.success).length;
       
       if (failCount === 0) {
-        message.success(`全部提交成功！共 ${successCount} 条`);
+        // 全部成功：清空所有表单，保留一个空白表单
+        setForms([{ accounts: '', title: '', board: '', tags: [], content: '' }]);
+        message.success(`全部提交成功！共 ${successCount} 条，表单已清空`);
       } else {
+        // 部分失败：处理表单
+        const updatedForms = forms.map((form, index) => {
+          const formResult = formResults.find(fr => fr.formIndex === index);
+          
+          if (!formResult) {
+            return form; // 保持不变
+          }
+          
+          if (formResult.allSuccess) {
+            return null; // 标记为删除
+          }
+          
+          // 有失败的账号：只保留失败的账号
+          if (formResult.failedAccounts.length > 0) {
+            return {
+              ...form,
+              accounts: formResult.failedAccounts.join('\n'), // 只保留失败的账号
+            };
+          }
+          
+          return form;
+        }).filter(form => form !== null) as PostForm[];
+        
+        // 如果所有表单都被删除了，保留一个空白表单
+        setForms(updatedForms.length > 0 ? updatedForms : [{ accounts: '', title: '', board: '', tags: [], content: '' }]);
+        
         const failedList = allResults
           .filter(r => !r.success)
           .map(r => `${r.username}: ${r.error}`)
           .join('\n');
         
-        Modal.error({
+        const successfulFormsCount = formResults.filter(fr => fr.allSuccess).length;
+        const partialFailFormsCount = formResults.filter(fr => !fr.allSuccess && fr.failedAccounts.length > 0).length;
+        
+        Modal.info({
           title: `提交完成：成功 ${successCount} 条，失败 ${failCount} 条`,
           content: (
             <div>
-              <p>失败的账号：</p>
+              <p>✅ 已删除 {successfulFormsCount} 个全部成功的表单</p>
+              {partialFailFormsCount > 0 && (
+                <p>🔄 {partialFailFormsCount} 个表单中已移除成功的账号，只保留失败的账号</p>
+              )}
+              <p style={{ marginTop: '16px' }}>失败的账号：</p>
               <pre style={{ maxHeight: '300px', overflow: 'auto' }}>{failedList}</pre>
+              <p style={{ marginTop: '16px', color: '#1890ff' }}>
+                💡 提示：失败的账号已保留在表单中，可以直接重新提交
+              </p>
             </div>
           ),
           width: 600,
@@ -398,7 +446,7 @@ const PostCreate: React.FC = () => {
                               {category}
                             </div>
                             <Space size={[8, 8]} wrap>
-                              {tags.map((tag: string) => {
+                              {(tags as string[]).map((tag: string) => {
                                 const tagValue = `${category}:${tag}`;
                                 const checked = (form.tags || []).includes(tagValue);
                                 return (
@@ -476,7 +524,7 @@ const PostCreate: React.FC = () => {
                         toolbar: 'undo redo | blocks | ' +
                           'bold italic forecolor backcolor | alignleft aligncenter ' +
                           'alignright alignjustify | bullist numlist outdent indent | ' +
-                          'removeformat | table | link image media | code codesample | ' +
+                          'removeformat | table | link image media | cloudlink | code codesample | ' +
                           'fullscreen preview | emoticons | help',
                         content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }',
                         branding: false,
@@ -484,14 +532,172 @@ const PostCreate: React.FC = () => {
                         license_key: 'gpl',
                         code_dialog_height: 450,
                         code_dialog_width: 1000,
-                        images_upload_handler: (blobInfo, progress) => new Promise((resolve, reject) => {
-                          const reader = new FileReader();
-                          reader.onload = () => {
-                            resolve(reader.result as string);
-                          };
-                          reader.onerror = () => reject('图片读取失败');
-                          reader.readAsDataURL(blobInfo.blob());
-                        }),
+                        // 设置文档基础URL，使相对路径的图片能够正确显示
+                        document_base_url: 'https://www.123panfx.com/',
+                        // 使用相对URL
+                        relative_urls: true,
+                        // 移除文档基础URL，保存时使用相对路径
+                        remove_script_host: true,
+                        // 转换URL为相对路径
+                        convert_urls: true,
+                        setup: (editor) => {
+                          // 处理粘贴内容，自动上传代理图片
+                          editor.on('PastePostProcess', async (e) => {
+                            const images = e.node.querySelectorAll('img');
+                            
+                            for (const img of images) {
+                              const src = img.getAttribute('src');
+                              
+                              // 检测是否是代理图片URL
+                              if (src && (src.includes('/api/search/proxy-image') || src.includes('../api/search/proxy-image'))) {
+                                try {
+                                  // 提取原始图片URL
+                                  const urlMatch = src.match(/url=([^&]+)/);
+                                  if (urlMatch) {
+                                    const originalUrl = decodeURIComponent(urlMatch[1]);
+                                    
+                                    console.log('检测到代理图片，开始上传:', originalUrl);
+                                    message.loading('正在上传图片...', 0);
+                                    
+                                    // 调用后端接口上传远程图片
+                                    const response = await fetch('/api/posts/upload-remote-image', {
+                                      method: 'POST',
+                                      headers: {
+                                        'Content-Type': 'application/json',
+                                        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                                      },
+                                      body: JSON.stringify({
+                                        imageUrl: originalUrl,
+                                      }),
+                                    });
+                                    
+                                    const result = await response.json();
+                                    message.destroy();
+                                    
+                                    if (result.success && result.url) {
+                                      // 替换为上传后的URL
+                                      img.setAttribute('src', result.url);
+                                      img.setAttribute('width', result.width?.toString() || '');
+                                      img.setAttribute('height', result.height?.toString() || '');
+                                      console.log('图片上传成功:', result.url);
+                                      message.success('图片已上传到论坛服务器');
+                                    } else {
+                                      message.error('图片上传失败: ' + (result.message || '未知错误'));
+                                    }
+                                  }
+                                } catch (error: any) {
+                                  message.destroy();
+                                  console.error('图片上传失败:', error);
+                                  message.error('图片上传失败: ' + error.message);
+                                }
+                              }
+                            }
+                          });
+                          
+                          // 添加自定义"插入云盘链接"按钮
+                          editor.ui.registry.addButton('cloudlink', {
+                            text: '云盘链接',
+                            tooltip: '插入云盘链接',
+                            icon: 'link',
+                            onAction: () => {
+                              // 打开对话框
+                              editor.windowManager.open({
+                                title: '插入云盘链接',
+                                body: {
+                                  type: 'panel',
+                                  items: [
+                                    {
+                                      type: 'input',
+                                      name: 'cloudlink',
+                                      label: '云盘链接',
+                                      placeholder: '例如：https://www.123865.com/s/b6tqVv-omp0v'
+                                    }
+                                  ]
+                                },
+                                buttons: [
+                                  {
+                                    type: 'cancel',
+                                    text: '取消'
+                                  },
+                                  {
+                                    type: 'submit',
+                                    text: '插入',
+                                    primary: true
+                                  }
+                                ],
+                                onSubmit: (api) => {
+                                  const data = api.getData();
+                                  const cloudlink = data.cloudlink;
+                                  
+                                  if (cloudlink && cloudlink.trim()) {
+                                    // 插入特定格式的云盘链接
+                                    const formattedLink = `[ttreply]&nbsp;${cloudlink.trim()} [/ttreply]`;
+                                    editor.insertContent(formattedLink);
+                                  } else {
+                                    editor.windowManager.alert('请输入云盘链接');
+                                    return;
+                                  }
+                                  
+                                  api.close();
+                                }
+                              });
+                            }
+                          });
+                        },
+                        images_upload_handler: async (blobInfo, progress) => {
+                          try {
+                            // 将图片转换为 base64
+                            const base64Data = await new Promise<string>((resolve, reject) => {
+                              const reader = new FileReader();
+                              reader.onload = () => {
+                                resolve(reader.result as string);
+                              };
+                              reader.onerror = () => reject('图片读取失败');
+                              reader.readAsDataURL(blobInfo.blob());
+                            });
+
+                            // 获取图片尺寸
+                            const imgDimensions = await new Promise<{ width: number; height: number }>((resolve, reject) => {
+                              const img = document.createElement('img');
+                              img.onload = () => {
+                                resolve({ width: img.width, height: img.height });
+                              };
+                              img.onerror = () => reject('无法获取图片尺寸');
+                              img.src = base64Data;
+                            });
+
+                            // 调用后端接口上传图片
+                            const response = await fetch('/api/posts/upload-image', {
+                              method: 'POST',
+                              headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                              },
+                              body: JSON.stringify({
+                                is_image: '1',
+                                width: imgDimensions.width,
+                                height: imgDimensions.height,
+                                name: blobInfo.filename(),
+                                data: base64Data,
+                              }),
+                            });
+
+                            const result = await response.json();
+
+                            if (result.success && result.url) {
+                              // 返回相对路径，TinyMCE会根据document_base_url自动拼接完整URL用于预览
+                              // 但保存时会保留相对路径
+                              console.log('图片上传成功，URL:', result.url);
+                              return result.url;
+                            } else {
+                              throw new Error(result.message || '图片上传失败');
+                            }
+                          } catch (error: any) {
+                            console.error('图片上传失败:', error);
+                            message.error('图片上传失败: ' + error.message);
+                            throw error;
+                          }
+                        },
                         table_default_attributes: {
                           border: '1'
                         },

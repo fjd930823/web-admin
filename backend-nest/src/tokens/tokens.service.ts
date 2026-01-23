@@ -13,7 +13,6 @@ export class TokensService {
   private readonly logger = new Logger(TokensService.name);
   private readonly configPath = path.join(
     process.cwd(),
-    process.env.NODE_ENV === 'production' ? '' : '../',
     'xiuno-tokens.conf',
   );
 
