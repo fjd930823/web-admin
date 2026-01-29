@@ -343,3 +343,97 @@ export async function getSearchDetail(id: string) {
     method: 'GET',
   });
 }
+
+// 统计相关接口
+export async function getOverallStatistics() {
+  return request<{
+    success: boolean;
+    data: {
+      totalTasks: number;
+      totalArchivedTasks: number;
+      totalPosts: number;
+      totalUsers: number;
+    };
+  }>('/api/statistics/overall', {
+    method: 'GET',
+  });
+}
+
+export async function getArchivedTasksByUser() {
+  return request<{
+    success: boolean;
+    data: Array<{ name: string; value: number }>;
+  }>('/api/statistics/archived-tasks-by-user', {
+    method: 'GET',
+  });
+}
+
+export async function getTasksByUser(params?: {
+  status?: string;
+  year?: number;
+  month?: number;
+}) {
+  return request<{
+    success: boolean;
+    data: Array<{ name: string; value: number }>;
+  }>('/api/statistics/tasks-by-user', {
+    method: 'GET',
+    params,
+  });
+}
+
+export async function getPostsByUser(params?: {
+  startDate?: string;
+  endDate?: string;
+}) {
+  return request<{
+    success: boolean;
+    data: {
+      weeks: string[];
+      series: Array<{ name: string; data: number[] }>;
+    };
+  }>('/api/statistics/posts-by-user', {
+    method: 'GET',
+    params,
+  });
+}
+
+// 操作日志相关接口
+export async function getOperationLogs(params?: {
+  page?: number;
+  pageSize?: number;
+  username?: string;
+  action?: string;
+  module?: string;
+  startDate?: string;
+  endDate?: string;
+}) {
+  return request<{
+    success: boolean;
+    data: any[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }>('/api/operation-logs', {
+    method: 'GET',
+    params,
+  });
+}
+
+export async function getActionStats() {
+  return request<{
+    success: boolean;
+    data: Array<{ action: string; count: number }>;
+  }>('/api/operation-logs/stats/actions', {
+    method: 'GET',
+  });
+}
+
+export async function getModuleStats() {
+  return request<{
+    success: boolean;
+    data: Array<{ module: string; count: number }>;
+  }>('/api/operation-logs/stats/modules', {
+    method: 'GET',
+  });
+}

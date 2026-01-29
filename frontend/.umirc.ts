@@ -101,6 +101,13 @@ export default defineConfig({
       component: './Token/Manage',
     },
     {
+      path: '/operation-logs',
+      name: '操作日志',
+      icon: 'fileText',
+      component: './OperationLogs',
+      access: 'canAdmin',
+    },
+    {
       path: '/',
       redirect: '/welcome',
     },
