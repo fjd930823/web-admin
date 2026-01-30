@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { SearchDto } from './dto/search.dto';
 import axios from 'axios';
 import { Response } from 'express';
@@ -23,6 +24,8 @@ export interface DoubanSearchItem {
 @Injectable()
 export class SearchService {
   private readonly logger = new Logger(SearchService.name);
+
+  constructor(private configService: ConfigService) {}
 
   /**
    * 搜索豆瓣电影/图书等内容
@@ -175,6 +178,7 @@ export class SearchService {
           'Sec-Fetch-User': '?1',
           'Cache-Control': 'max-age=0',
           'Referer': 'https://movie.douban.com/',
+          'Cookie': this.configService.get<string>('DOUBAN_COOKIE') || ''
         },
       });
 
