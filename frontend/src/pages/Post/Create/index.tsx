@@ -504,7 +504,7 @@ const PostCreate: React.FC = () => {
 
                   <Form.Item label="内容" required>
                     <Editor
-                      tinymceScriptSrc="https://cdn.jsdelivr.net/npm/tinymce@6/tinymce.min.js"
+                      tinymceScriptSrc="/tinymce/tinymce.min.js"
                       value={form.content}
                       onInit={(evt, editor) => {
                         editorRefs.current[index] = editor;
@@ -514,7 +514,9 @@ const PostCreate: React.FC = () => {
                         height: 500,
                         menubar: true,
                         language: 'zh_CN',
-                        language_url: 'https://cdn.jsdelivr.net/npm/tinymce-lang@1/langs/zh_CN.js',
+                        language_url: '/tinymce/langs/zh_CN.js',
+                        // 如果本地文件加载失败，会自动回退到 CDN
+                        base_url: '/tinymce',
                         plugins: [
                           'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
                           'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
