@@ -251,3 +251,7 @@ EOF
 # 清理并重装
 rm -rf node_modules pnpm-lock.yaml ~/.cache/node-gyp
 pnpm install
+
+
+
+./deploy.sh --db-only   迁移数据库
