@@ -29,9 +29,15 @@ export class MergeRequestsService {
   ) {}
 
   async findAll(query: any) {
-    const { status } = query;
+    const { status, sortBy, sortDirection } = query;
     const { limit, offset } = parsePagination(query);
-    
+
+    // 允许排序的字段
+    const allowedSortFields = ['created_at', 'merged_at'];
+    // 默认排序字段和方向
+    const sortField = allowedSortFields.includes(sortBy) ? sortBy : 'created_at';
+    const direction = (sortDirection === 'asc' || sortDirection === 'desc') ? sortDirection : 'desc';
+
     let queryBuilder = this.knex<MergeRequest>('merge_requests')
       .leftJoin('users as creator', 'merge_requests.creator_id', 'creator.id')
       .leftJoin('users as assignee', 'merge_requests.assignee_id', 'assignee.id')
@@ -59,7 +65,7 @@ export class MergeRequestsService {
 
     // 获取数据
     const rows = await queryBuilder
-      .orderBy('merge_requests.created_at', 'desc')
+      .orderBy(`merge_requests.${sortField}`, direction)
       .limit(limit)
       .offset(offset);
 

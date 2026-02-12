@@ -134,6 +134,7 @@ const MergeRequestList: React.FC = () => {
       width: 180,
       valueType: 'dateTime',
       search: false,
+      sorter: true,
     },
     ...(currentUser?.role === 'admin'
       ? [
@@ -190,11 +191,14 @@ const MergeRequestList: React.FC = () => {
             <PlusOutlined /> 新建
           </Button>,
         ]}
-        request={async (params) => {
+        request={async (params, sort) => {
+          // 目前只支持单列排序，获取排序字段和排序方向
+          const sortParams = Object.entries(sort)[0];
           const response = await getMergeRequests({
             page: params.current,
             pageSize: params.pageSize,
             status: params.status,
+            ...(sortParams ? { sortBy: sortParams[0], sortDirection: sortParams[1] === 'ascend' ? 'asc' : 'desc' } : {}),
           });
           return {
             data: response.data,
