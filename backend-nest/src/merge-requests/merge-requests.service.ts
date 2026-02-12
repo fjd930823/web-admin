@@ -29,7 +29,7 @@ export class MergeRequestsService {
   ) {}
 
   async findAll(query: any) {
-    const { status, sortBy, sortDirection } = query;
+    const { status, creatorIds, sortBy, sortDirection } = query;
     const { limit, offset } = parsePagination(query);
 
     // 允许排序的字段
@@ -57,6 +57,10 @@ export class MergeRequestsService {
 
     if (status) {
       queryBuilder = queryBuilder.where('merge_requests.status', status);
+    }
+
+    if (creatorIds && creatorIds.length > 0) {
+      queryBuilder = queryBuilder.whereIn('merge_requests.creator_id', creatorIds);
     }
 
     // 获取总数

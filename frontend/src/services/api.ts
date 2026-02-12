@@ -67,6 +67,9 @@ export async function getMergeRequests(params?: {
   page?: number;
   pageSize?: number;
   status?: string;
+  creatorIds?: number[];
+  sortBy?: string;
+  sortDirection?: string;
 }) {
   return request<{
     success: boolean;
