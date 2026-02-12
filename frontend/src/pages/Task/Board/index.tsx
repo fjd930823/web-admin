@@ -270,6 +270,7 @@ const TaskBoard: React.FC = () => {
     <PageContainer
       extra={[
         <Space key="filters" size="middle">
+          <span>共 {tasks.length} 个任务</span>
           <Select
             placeholder="按负责人筛选"
             style={{ width: 150 }}
