@@ -29,9 +29,15 @@ export class MergeRequestsService {
   ) {}
 
   async findAll(query: any) {
-    const { status } = query;
+    const { status, creatorIds, sortBy, sortDirection } = query;
     const { limit, offset } = parsePagination(query);
-    
+
+    // 允许排序的字段
+    const allowedSortFields = ['created_at', 'merged_at'];
+    // 默认排序字段和方向
+    const sortField = allowedSortFields.includes(sortBy) ? sortBy : 'created_at';
+    const direction = (sortDirection === 'asc' || sortDirection === 'desc') ? sortDirection : 'desc';
+
     let queryBuilder = this.knex<MergeRequest>('merge_requests')
       .leftJoin('users as creator', 'merge_requests.creator_id', 'creator.id')
       .leftJoin('users as assignee', 'merge_requests.assignee_id', 'assignee.id')
@@ -53,13 +59,17 @@ export class MergeRequestsService {
       queryBuilder = queryBuilder.where('merge_requests.status', status);
     }
 
+    if (creatorIds && creatorIds.length > 0) {
+      queryBuilder = queryBuilder.whereIn('merge_requests.creator_id', creatorIds);
+    }
+
     // 获取总数
     const countResult = await queryBuilder.clone().clearSelect().clearOrder().count('merge_requests.id as count').first();
     const count = Number(countResult?.count || 0);
 
     // 获取数据
     const rows = await queryBuilder
-      .orderBy('merge_requests.created_at', 'desc')
+      .orderBy(`merge_requests.${sortField}`, direction)
       .limit(limit)
       .offset(offset);
 

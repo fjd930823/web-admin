@@ -56,11 +56,17 @@ export class TasksService {
     if (year && month) {
       const startOfMonth = new Date(year, month - 1, 1);
       const endOfMonth = new Date(year, month, 0, 23, 59, 59);
-      queryBuilder = queryBuilder.whereBetween('tasks.start_date', [startOfMonth, endOfMonth]);
+      queryBuilder = queryBuilder.whereBetween('tasks.start_date', [
+        startOfMonth.toISOString().slice(0, 19).replace('T', ' '),
+        endOfMonth.toISOString().slice(0, 19).replace('T', ' ')
+      ]);
     } else if (year) {
       const startOfYear = new Date(year, 0, 1);
       const endOfYear = new Date(year, 11, 31, 23, 59, 59);
-      queryBuilder = queryBuilder.whereBetween('tasks.start_date', [startOfYear, endOfYear]);
+      queryBuilder = queryBuilder.whereBetween('tasks.start_date', [
+        startOfYear.toISOString().slice(0, 19).replace('T', ' '),
+        endOfYear.toISOString().slice(0, 19).replace('T', ' ')
+      ]);
     }
 
     // 获取总数

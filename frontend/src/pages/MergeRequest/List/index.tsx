@@ -9,13 +9,14 @@ import {
   ProTable,
 } from '@ant-design/pro-components';
 import { Button, message, Popconfirm, Tag } from 'antd';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useModel } from '@umijs/max';
 import {
   getMergeRequests,
   deleteMergeRequest,
   createMergeRequest,
   updateMergeRequest,
+  getUsers,
   type MergeRequest,
 } from '@/services/api';
 
@@ -24,8 +25,27 @@ const MergeRequestList: React.FC = () => {
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [currentRecord, setCurrentRecord] = useState<MergeRequest | null>(null);
+  const [userOptions, setUserOptions] = useState<{ label: string; value: number }[]>([]);
   const { initialState } = useModel('@@initialState');
   const currentUser = initialState?.currentUser;
+
+  // 获取用户列表用于过滤
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await getUsers({ page: 1, pageSize: 1000 });
+        if (response.success && response.data) {
+          setUserOptions(response.data.map((user: any) => ({
+            label: user.username,
+            value: user.id,
+          })));
+        }
+      } catch (error) {
+        console.error('Failed to fetch users:', error);
+      }
+    };
+    fetchUsers();
+  }, []);
 
   const handleDelete = async (id: number) => {
     try {
@@ -117,9 +137,11 @@ const MergeRequestList: React.FC = () => {
     },
     {
       title: '创建者',
-      dataIndex: 'creator_name',
+      dataIndex: 'creator_id',
       width: 100,
       search: false,
+      filters: userOptions.map(option => ({ text: option.label, value: option.value })),
+      render: (_, record) => record.creator_name || '-',
     },
     {
       title: '合并人',
@@ -134,6 +156,7 @@ const MergeRequestList: React.FC = () => {
       width: 180,
       valueType: 'dateTime',
       search: false,
+      sorter: true,
     },
     ...(currentUser?.role === 'admin'
       ? [
@@ -190,11 +213,19 @@ const MergeRequestList: React.FC = () => {
             <PlusOutlined /> 新建
           </Button>,
         ]}
-        request={async (params) => {
+        request={async (params, sort, filters) => {
+          const creatorIds = filters.creator_id
+            && (Array.isArray(filters.creator_id)
+            ? filters.creator_id as number[]
+            : [filters.creator_id as number])
+          // 目前只支持单列排序，获取排序字段和排序方向
+          const sortParams = Object.entries(sort)[0];
           const response = await getMergeRequests({
             page: params.current,
             pageSize: params.pageSize,
             status: params.status,
+            ...(sortParams ? { sortBy: sortParams[0], sortDirection: sortParams[1] === 'ascend' ? 'asc' : 'desc' } : {}),
+            creatorIds: creatorIds ? creatorIds : undefined,
           });
           return {
             data: response.data,
